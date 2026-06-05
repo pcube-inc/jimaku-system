@@ -14,8 +14,8 @@ const SPREADSHEET_ID = '1gm98VHnJYNo4AnbNYAi71ETMcnsmx-1hcHFJz49S0qY';
 // 作成方法: LINE Developers > チャネル > LIFF > 追加
 // エンドポイントURL: 各ページのURL（例: https://pcube-inc.github.io/jimaku-system/shift/）
 const LIFF_ID = {
-  shift:      '【shift用LIFF ID】',   // 例: 1234567890-AbCdEfGh
-  wakeup:     '【wakeup用LIFF ID】',
-  attendance: '【attendance用LIFF ID】',
-  trouble:    '【trouble用LIFF ID】',
+  shift:      '2010288935-EetRFNLf',   // 例: 1234567890-AbCdEfGh
+  wakeup:     '2010288935-bwQd9Tmq',
+  attendance: '2010288935-CG4xMF6B',
+  trouble:    '2010288935-b0khjSws',
 };
