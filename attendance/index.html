@@ -6,45 +6,19 @@
 <title>出退勤連絡 | 字幕システム</title>
 <link rel="stylesheet" href="../css/common.css">
 <style>
-.att-btn-group {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-top: 24px;
-}
-.att-btn {
-  width: 100%;
-  min-height: 72px;
-  border-radius: var(--radius-lg);
-  border: none;
-  font-size: 18px;
-  font-weight: 700;
-  font-family: var(--font);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  transition: opacity 0.15s, transform 0.1s;
-  padding: 1.2rem;
-}
-.att-btn:active { transform: scale(0.97); }
-.att-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-.btn-checkin  { background: var(--green-400); color: #fff; box-shadow: 0 4px 16px rgba(29,158,117,0.3); }
-.btn-checkout { background: #2196F3;           color: #fff; box-shadow: 0 4px 16px rgba(33,150,243,0.3); }
-.att-icon { font-size: 24px; }
-.result-card {
-  margin-top: 16px;
-  border-radius: var(--radius-lg);
-  padding: 16px;
-  text-align: center;
-  font-size: 15px;
-  font-weight: 600;
-  display: none;
-}
-.result-card.show { display: block; }
-.result-in  { background: var(--green-50);  color: var(--green-600);  border: 1px solid rgba(29,158,117,0.2); }
-.result-out { background: #E3F2FD;           color: #1565C0;           border: 1px solid rgba(33,150,243,0.2); }
+.att-btn-group { display:flex; flex-direction:column; gap:16px; margin-top:24px; }
+.att-btn { width:100%; min-height:72px; border-radius:var(--radius-lg); border:none; font-size:18px; font-weight:700; font-family:var(--font); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:opacity .15s,transform .1s; padding:1.2rem; }
+.att-btn:active { transform:scale(.97); }
+.att-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+.btn-checkin  { background:var(--green-400); color:#fff; box-shadow:0 4px 16px rgba(29,158,117,.3); }
+.btn-checkout { background:#2196F3; color:#fff; box-shadow:0 4px 16px rgba(33,150,243,.3); }
+.att-icon { font-size:24px; }
+.result-card { margin-top:16px; border-radius:var(--radius-lg); padding:16px; text-align:center; font-size:15px; font-weight:600; display:none; }
+.result-card.show { display:block; }
+.result-in  { background:var(--green-50); color:var(--green-600); border:1px solid rgba(29,158,117,.2); }
+.result-out { background:#E3F2FD; color:#1565C0; border:1px solid rgba(33,150,243,.2); }
+.liff-name-badge { background:var(--green-50); border:1px solid var(--green-100); border-radius:var(--radius); padding:8px 12px; font-size:13px; color:var(--green-600); margin-bottom:12px; display:none; }
+.liff-name-badge.show { display:flex; align-items:center; gap:8px; }
 </style>
 </head>
 <body>
@@ -58,7 +32,11 @@
   </header>
 
   <div class="content">
-    <div class="form-group">
+    <div id="liff-badge" class="liff-name-badge">
+      <span>🟢</span><span id="liff-badge-name"></span><span class="text-hint text-sm">でログイン中</span>
+    </div>
+
+    <div class="form-group" id="staff-select-wrap">
       <label class="form-label">スタッフ名</label>
       <select id="staff-name" class="form-control">
         <option value="">名前を選択してください</option>
@@ -68,13 +46,11 @@
     <div id="error-msg" class="error-msg"></div>
 
     <div class="att-btn-group">
-      <button class="att-btn btn-checkin" id="btn-in" onclick="submitAttendance('in')">
-        <span class="att-icon">🏢</span>
-        <span>出勤</span>
+      <button class="att-btn btn-checkin"  id="btn-in"  onclick="submitAttendance('in')">
+        <span class="att-icon">🏢</span><span>出勤</span>
       </button>
       <button class="att-btn btn-checkout" id="btn-out" onclick="submitAttendance('out')">
-        <span class="att-icon">🏠</span>
-        <span>退勤</span>
+        <span class="att-icon">🏠</span><span>退勤</span>
       </button>
     </div>
 
@@ -82,114 +58,91 @@
     <div id="result-out" class="result-card result-out"></div>
   </div>
 </div>
-
 <div id="toast" class="toast"></div>
 
 <script src="../js/config.js"></script>
+<script src="../js/liff-helper.js"></script>
 <script>
-loadStaffNames();
+let lockedName = null;
+
+LiffHelper.init(LIFF_ID.attendance, GAS_URL.attendance, function(name, isLiff) {
+  if (name) {
+    lockedName = name;
+    document.getElementById('liff-badge-name').textContent = name;
+    document.getElementById('liff-badge').classList.add('show');
+    document.getElementById('staff-select-wrap').classList.add('hidden');
+  } else {
+    loadStaffNames();
+  }
+});
 
 function loadStaffNames() {
-  const cbName = 'cb_staff_' + Date.now();
+  const cbName = 'cb_staff_'+Date.now();
   window[cbName] = function(res) {
     cleanup(cbName);
     const names = (res.success && res.data) ? res.data : [];
     const sel = document.getElementById('staff-name');
     sel.innerHTML = '<option value="">名前を選択してください</option>';
-    names.forEach(function(n) {
-      const opt = document.createElement('option');
-      opt.value = n; opt.textContent = n;
-      sel.appendChild(opt);
-    });
+    names.forEach(function(n){ const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o); });
   };
-  jsonp(GAS_URL.attendance, { action: 'getStaff' }, cbName);
+  jsonp(GAS_URL.attendance, { action:'getStaff' }, cbName);
 }
 
+function getSelectedName() { return lockedName || document.getElementById('staff-name').value; }
+
 function submitAttendance(type) {
-  const name  = document.getElementById('staff-name').value;
+  const name  = getSelectedName();
   const errEl = document.getElementById('error-msg');
   errEl.classList.remove('show');
-
-  if (!name) {
-    errEl.textContent = 'スタッフ名を選択してください';
-    errEl.classList.add('show');
-    return;
-  }
+  if (!name) { errEl.textContent='スタッフ名を選択してください'; errEl.classList.add('show'); return; }
 
   const btnIn  = document.getElementById('btn-in');
   const btnOut = document.getElementById('btn-out');
-  btnIn.disabled  = true;
-  btnOut.disabled = true;
+  btnIn.disabled = btnOut.disabled = true;
+  if (type==='in')  btnIn.innerHTML  = '<span class="att-icon">⏳</span><span>送信中…</span>';
+  else              btnOut.innerHTML = '<span class="att-icon">⏳</span><span>送信中…</span>';
 
-  if (type === 'in') {
-    btnIn.innerHTML  = '<span class="att-icon">⏳</span><span>送信中…</span>';
-  } else {
-    btnOut.innerHTML = '<span class="att-icon">⏳</span><span>送信中…</span>';
-  }
-
-  postNoCors(GAS_URL.attendance, { action: 'submitAttendance', name: name, type: type }, function() {
-    btnIn.disabled  = false;
-    btnOut.disabled = false;
+  postNoCors(GAS_URL.attendance, { action:'submitAttendance', name:name, type:type }, function() {
+    btnIn.disabled = btnOut.disabled = false;
     btnIn.innerHTML  = '<span class="att-icon">🏢</span><span>出勤</span>';
     btnOut.innerHTML = '<span class="att-icon">🏠</span><span>退勤</span>';
 
     const now = new Date();
-    const hh  = String(now.getHours()).padStart(2, '0');
-    const mm  = String(now.getMinutes()).padStart(2, '0');
-    const timeStr = hh + ':' + mm;
+    const timeStr = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
 
-    if (type === 'in') {
+    if (type==='in') {
       const el = document.getElementById('result-in');
-      el.textContent = '🏢 ' + timeStr + ' に出勤を記録しました';
-      el.classList.add('show');
+      el.textContent='🏢 '+timeStr+' に出勤を記録しました'; el.classList.add('show');
       document.getElementById('result-out').classList.remove('show');
     } else {
       const el = document.getElementById('result-out');
-      el.textContent = '🏠 ' + timeStr + ' に退勤を記録しました';
-      el.classList.add('show');
+      el.textContent='🏠 '+timeStr+' に退勤を記録しました'; el.classList.add('show');
       document.getElementById('result-in').classList.remove('show');
     }
-
     showToast('送信しました');
   });
 }
 
-// ---- ユーティリティ ----
 function jsonp(url, params, cbName) {
-  const qs = Object.keys(params).map(function(k) {
-    return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
-  }).join('&');
-  const script = document.createElement('script');
-  script.src = url + '?' + qs + '&callback=' + cbName;
-  script.onerror = function() {
-    cleanup(cbName);
-    if (typeof window[cbName] === 'function') window[cbName]({ success: false, error: 'network error' });
-  };
-  document.head.appendChild(script);
+  const qs = Object.keys(params).map(function(k){ return encodeURIComponent(k)+'='+encodeURIComponent(params[k]); }).join('&');
+  const s = document.createElement('script');
+  s.src = url+'?'+qs+'&callback='+cbName;
+  s.onerror = function(){ cleanup(cbName); if(typeof window[cbName]==='function') window[cbName]({success:false}); };
+  document.head.appendChild(s);
 }
-
 function cleanup(cbName) {
   delete window[cbName];
-  document.querySelectorAll('script[src*="' + cbName + '"]').forEach(function(el) { el.remove(); });
+  document.querySelectorAll('script[src*="'+cbName+'"]').forEach(function(el){el.remove();});
 }
-
 function postNoCors(url, params, cb) {
   const form = document.createElement('form');
-  Object.keys(params).forEach(function(k) {
-    const input = document.createElement('input');
-    input.type = 'hidden'; input.name = k; input.value = params[k];
-    form.appendChild(input);
-  });
-  fetch(url, { method: 'POST', mode: 'no-cors', body: new FormData(form) })
-    .then(function() { setTimeout(cb, 3000); })
-    .catch(function() { setTimeout(cb, 3000); });
+  Object.keys(params).forEach(function(k){ const i=document.createElement('input'); i.type='hidden'; i.name=k; i.value=params[k]; form.appendChild(i); });
+  fetch(url, { method:'POST', mode:'no-cors', body:new FormData(form) })
+    .then(function(){ setTimeout(cb,3000); }).catch(function(){ setTimeout(cb,3000); });
 }
-
 function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(function() { t.classList.remove('show'); }, 2500);
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); },2500);
 }
 </script>
 </body>

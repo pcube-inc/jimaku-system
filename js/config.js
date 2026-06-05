@@ -6,5 +6,16 @@ const GAS_URL = {
   trouble:    'https://script.google.com/macros/s/AKfycbz4Aa-vI7mgMj8PEfvo6_ZqTe0BPqzK1FudrBv3RsiMtC-dIwHf2u9KShG55xs5cFT9/exec',
   admin:      'https://script.google.com/macros/s/AKfycbxr7xpK6nsMMVvPm4hss7QYG2VE3m2aWzhClJdljnp_-LE1gxwriVQwHQHVmxi7Ak4z/exec',
 };
+
 // スプレッドシートのURLの /d/ と /edit の間の文字列がID
 const SPREADSHEET_ID = '1gm98VHnJYNo4AnbNYAi71ETMcnsmx-1hcHFJz49S0qY';
+
+// LINE LIFF ID — LINE Developers でLIFFアプリを4つ作成後に書き換えること
+// 作成方法: LINE Developers > チャネル > LIFF > 追加
+// エンドポイントURL: 各ページのURL（例: https://pcube-inc.github.io/jimaku-system/shift/）
+const LIFF_ID = {
+  shift:      '【shift用LIFF ID】',   // 例: 1234567890-AbCdEfGh
+  wakeup:     '【wakeup用LIFF ID】',
+  attendance: '【attendance用LIFF ID】',
+  trouble:    '【trouble用LIFF ID】',
+};

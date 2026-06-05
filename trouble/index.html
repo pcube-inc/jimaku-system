@@ -6,59 +6,20 @@
 <title>トラブル対応 | 字幕システム</title>
 <link rel="stylesheet" href="../css/common.css">
 <style>
-.trouble-first-btn {
-  width: 100%;
-  min-height: 80px;
-  border-radius: var(--radius-lg);
-  border: none;
-  background: var(--red-400);
-  color: #fff;
-  font-size: 18px;
-  font-weight: 700;
-  font-family: var(--font);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 1.2rem;
-  box-shadow: 0 4px 16px rgba(226,75,74,0.35);
-  transition: opacity 0.15s, transform 0.1s;
-  margin-top: 8px;
-}
-.trouble-first-btn:active  { transform: scale(0.97); }
-.trouble-first-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-.trouble-icon { font-size: 28px; }
-.step-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.step-dot {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  background: var(--gray-200);
-  color: var(--text-hint);
-}
-.step-dot.done  { background: var(--green-400); color: #fff; }
-.step-dot.active { background: var(--red-400);  color: #fff; }
-.step-line {
-  flex: 1;
-  height: 2px;
-  background: var(--gray-200);
-}
-.step-line.done { background: var(--green-400); }
-.second-form {
-  display: none;
-}
-.second-form.show { display: block; }
+.trouble-first-btn { width:100%; min-height:80px; border-radius:var(--radius-lg); border:none; background:var(--red-400); color:#fff; font-size:18px; font-weight:700; font-family:var(--font); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; padding:1.2rem; box-shadow:0 4px 16px rgba(226,75,74,.35); transition:opacity .15s,transform .1s; margin-top:8px; }
+.trouble-first-btn:active { transform:scale(.97); }
+.trouble-first-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+.trouble-icon { font-size:28px; }
+.step-indicator { display:flex; align-items:center; gap:8px; margin-bottom:16px; }
+.step-dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; background:var(--gray-200); color:var(--text-hint); }
+.step-dot.done   { background:var(--green-400); color:#fff; }
+.step-dot.active { background:var(--red-400);   color:#fff; }
+.step-line { flex:1; height:2px; background:var(--gray-200); }
+.step-line.done { background:var(--green-400); }
+.second-form { display:none; }
+.second-form.show { display:block; }
+.liff-name-badge { background:var(--green-50); border:1px solid var(--green-100); border-radius:var(--radius); padding:8px 12px; font-size:13px; color:var(--green-600); margin-bottom:12px; display:none; }
+.liff-name-badge.show { display:flex; align-items:center; gap:8px; }
 </style>
 </head>
 <body>
@@ -72,7 +33,11 @@
   </header>
 
   <div class="content">
-    <div class="form-group">
+    <div id="liff-badge" class="liff-name-badge">
+      <span>🟢</span><span id="liff-badge-name"></span><span class="text-hint text-sm">でログイン中</span>
+    </div>
+
+    <div class="form-group" id="staff-select-wrap">
       <label class="form-label">スタッフ名</label>
       <select id="staff-name" class="form-control">
         <option value="">名前を選択してください</option>
@@ -81,186 +46,141 @@
 
     <div id="error-msg" class="error-msg"></div>
 
-    <!-- ステップインジケーター -->
-    <div class="step-indicator" id="step-indicator">
+    <div class="step-indicator">
       <div class="step-dot active" id="step1-dot">1</div>
       <div class="step-line" id="step-line"></div>
       <div class="step-dot" id="step2-dot">2</div>
     </div>
 
-    <!-- 第一報 -->
     <div id="first-section">
-      <div class="card" style="background:var(--red-50);border-color:rgba(226,75,74,0.2);margin-bottom:12px;">
+      <div class="card" style="background:var(--red-50);border-color:rgba(226,75,74,.2);margin-bottom:12px;">
         <div class="card-title" style="color:var(--red-600);">⚠️ 第一報</div>
-        <p class="text-sm text-sub">トラブルが発生したらすぐに送信してください。<br>詳細は第二報で送れます。</p>
+        <p class="text-sm text-sub">トラブルが発生したらすぐに送信してください。詳細は第二報で送れます。</p>
       </div>
       <button class="trouble-first-btn" id="btn-first" onclick="submitFirst()">
-        <span class="trouble-icon">🚨</span>
-        <span>第一報を送信</span>
+        <span class="trouble-icon">🚨</span><span>第一報を送信</span>
       </button>
     </div>
 
-    <!-- 第一報送信済みメッセージ -->
     <div id="first-sent" class="success-msg" style="margin-top:12px;"></div>
 
-    <!-- 第二報フォーム -->
     <div class="second-form" id="second-section">
       <hr class="divider mt-16">
-      <div class="card" style="background:var(--amber-50);border-color:rgba(239,159,39,0.2);margin-bottom:12px;">
+      <div class="card" style="background:var(--amber-50);border-color:rgba(239,159,39,.2);margin-bottom:12px;">
         <div class="card-title" style="color:var(--amber-600);">📝 第二報</div>
         <p class="text-sm text-sub">トラブルの詳細を入力して送信してください。</p>
       </div>
-
       <div id="second-error" class="error-msg"></div>
-
       <div class="form-group">
         <label class="form-label">詳細内容</label>
         <textarea id="detail-text" class="form-control" rows="5" placeholder="発生した状況、場所、対応状況などを記入してください"></textarea>
       </div>
-
-      <button class="btn btn-danger" id="btn-second" onclick="submitSecond()">
-        <span>第二報を送信</span>
-      </button>
+      <button class="btn btn-danger" id="btn-second" onclick="submitSecond()">第二報を送信</button>
     </div>
 
-    <!-- 第二報送信完了 -->
     <div id="second-sent" class="success-msg" style="margin-top:12px;display:none;"></div>
   </div>
 </div>
-
 <div id="toast" class="toast"></div>
 
 <script src="../js/config.js"></script>
+<script src="../js/liff-helper.js"></script>
 <script>
-let firstSent = false;
+let lockedName = null;
 
-loadStaffNames();
+LiffHelper.init(LIFF_ID.trouble, GAS_URL.trouble, function(name, isLiff) {
+  if (name) {
+    lockedName = name;
+    document.getElementById('liff-badge-name').textContent = name;
+    document.getElementById('liff-badge').classList.add('show');
+    document.getElementById('staff-select-wrap').classList.add('hidden');
+  } else {
+    loadStaffNames();
+  }
+});
 
 function loadStaffNames() {
-  const cbName = 'cb_staff_' + Date.now();
+  const cbName = 'cb_staff_'+Date.now();
   window[cbName] = function(res) {
     cleanup(cbName);
     const names = (res.success && res.data) ? res.data : [];
     const sel = document.getElementById('staff-name');
     sel.innerHTML = '<option value="">名前を選択してください</option>';
-    names.forEach(function(n) {
-      const opt = document.createElement('option');
-      opt.value = n; opt.textContent = n;
-      sel.appendChild(opt);
-    });
+    names.forEach(function(n){ const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o); });
   };
-  jsonp(GAS_URL.trouble, { action: 'getStaff' }, cbName);
+  jsonp(GAS_URL.trouble, { action:'getStaff' }, cbName);
 }
 
+function getSelectedName() { return lockedName || document.getElementById('staff-name').value; }
+
 function submitFirst() {
-  const name  = document.getElementById('staff-name').value;
+  const name  = getSelectedName();
   const errEl = document.getElementById('error-msg');
   errEl.classList.remove('show');
-
-  if (!name) {
-    errEl.textContent = 'スタッフ名を選択してください';
-    errEl.classList.add('show');
-    return;
-  }
+  if (!name) { errEl.textContent='スタッフ名を選択してください'; errEl.classList.add('show'); return; }
 
   const btn = document.getElementById('btn-first');
   btn.disabled = true;
   btn.innerHTML = '<span class="trouble-icon">⏳</span><span>送信中…</span>';
 
-  postNoCors(GAS_URL.trouble, { action: 'submitTrouble1st', name: name }, function() {
-    btn.disabled = true;
+  postNoCors(GAS_URL.trouble, { action:'submitTrouble1st', name:name }, function() {
     btn.innerHTML = '<span class="trouble-icon">✅</span><span>第一報 送信済み</span>';
     btn.style.background = 'var(--gray-400)';
 
-    const sentEl = document.getElementById('first-sent');
-    sentEl.textContent = '✅ 第一報を送信しました。第二報を入力してください。';
-    sentEl.classList.add('show');
+    const s = document.getElementById('first-sent');
+    s.textContent = '✅ 第一報を送信しました。第二報を入力してください。'; s.classList.add('show');
 
-    // ステップ更新
     document.getElementById('step1-dot').className  = 'step-dot done';
     document.getElementById('step1-dot').textContent = '✓';
     document.getElementById('step-line').className   = 'step-line done';
     document.getElementById('step2-dot').className   = 'step-dot active';
-
     document.getElementById('second-section').classList.add('show');
-    firstSent = true;
     showToast('第一報を送信しました');
   });
 }
 
 function submitSecond() {
-  const name   = document.getElementById('staff-name').value;
+  const name   = getSelectedName();
   const detail = document.getElementById('detail-text').value.trim();
   const errEl  = document.getElementById('second-error');
   errEl.classList.remove('show');
-
-  if (!name) {
-    errEl.textContent = 'スタッフ名を選択してください';
-    errEl.classList.add('show');
-    return;
-  }
-  if (!detail) {
-    errEl.textContent = '詳細内容を入力してください';
-    errEl.classList.add('show');
-    return;
-  }
+  if (!name)   { errEl.textContent='スタッフ名を選択してください'; errEl.classList.add('show'); return; }
+  if (!detail) { errEl.textContent='詳細内容を入力してください';   errEl.classList.add('show'); return; }
 
   const btn = document.getElementById('btn-second');
-  btn.disabled = true;
-  btn.textContent = '送信中…';
+  btn.disabled = true; btn.textContent = '送信中…';
 
-  postNoCors(GAS_URL.trouble, { action: 'submitTrouble2nd', name: name, detail: detail }, function() {
-    btn.disabled = true;
-    btn.textContent = '✅ 第二報 送信済み';
-    btn.style.background = 'var(--gray-400)';
-
+  postNoCors(GAS_URL.trouble, { action:'submitTrouble2nd', name:name, detail:detail }, function() {
+    btn.textContent = '✅ 第二報 送信済み'; btn.style.background = 'var(--gray-400)';
     document.getElementById('step2-dot').className   = 'step-dot done';
     document.getElementById('step2-dot').textContent = '✓';
-
-    const sentEl = document.getElementById('second-sent');
-    sentEl.textContent = '✅ 第二報を送信しました。管理者に通知されました。';
-    sentEl.style.display = 'block';
-    sentEl.classList.add('show');
+    const s = document.getElementById('second-sent');
+    s.textContent = '✅ 第二報を送信しました。管理者に通知されました。';
+    s.style.display = 'block'; s.classList.add('show');
     showToast('第二報を送信しました');
   });
 }
 
-// ---- ユーティリティ ----
 function jsonp(url, params, cbName) {
-  const qs = Object.keys(params).map(function(k) {
-    return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
-  }).join('&');
-  const script = document.createElement('script');
-  script.src = url + '?' + qs + '&callback=' + cbName;
-  script.onerror = function() {
-    cleanup(cbName);
-    if (typeof window[cbName] === 'function') window[cbName]({ success: false, error: 'network error' });
-  };
-  document.head.appendChild(script);
+  const qs = Object.keys(params).map(function(k){ return encodeURIComponent(k)+'='+encodeURIComponent(params[k]); }).join('&');
+  const s = document.createElement('script');
+  s.src = url+'?'+qs+'&callback='+cbName;
+  s.onerror = function(){ cleanup(cbName); if(typeof window[cbName]==='function') window[cbName]({success:false}); };
+  document.head.appendChild(s);
 }
-
 function cleanup(cbName) {
   delete window[cbName];
-  document.querySelectorAll('script[src*="' + cbName + '"]').forEach(function(el) { el.remove(); });
+  document.querySelectorAll('script[src*="'+cbName+'"]').forEach(function(el){el.remove();});
 }
-
 function postNoCors(url, params, cb) {
   const form = document.createElement('form');
-  Object.keys(params).forEach(function(k) {
-    const input = document.createElement('input');
-    input.type = 'hidden'; input.name = k; input.value = params[k];
-    form.appendChild(input);
-  });
-  fetch(url, { method: 'POST', mode: 'no-cors', body: new FormData(form) })
-    .then(function() { setTimeout(cb, 3000); })
-    .catch(function() { setTimeout(cb, 3000); });
+  Object.keys(params).forEach(function(k){ const i=document.createElement('input'); i.type='hidden'; i.name=k; i.value=params[k]; form.appendChild(i); });
+  fetch(url, { method:'POST', mode:'no-cors', body:new FormData(form) })
+    .then(function(){ setTimeout(cb,3000); }).catch(function(){ setTimeout(cb,3000); });
 }
-
 function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(function() { t.classList.remove('show'); }, 2500);
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); },2500);
 }
 </script>
 </body>
