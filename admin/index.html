@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理者設定 | 字幕システム</title>
+<link rel="stylesheet" href="../css/common.css">
+<style>
+.staff-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.staff-row:last-child { border-bottom: none; }
+.staff-name-input {
+  flex: 1;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1.5px solid var(--border-md);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-family: var(--font);
+}
+.staff-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+.staff-del-btn {
+  min-height: 36px;
+  min-width: 36px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  border: 1.5px solid rgba(226,75,74,0.3);
+  background: var(--red-50);
+  color: var(--red-600);
+  font-size: 13px;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="header">
+    <div class="header-logo">⚙</div>
+    <div class="header-text">
+      <div class="header-title">管理者設定</div>
+      <div class="header-sub">字幕システム</div>
+    </div>
+  </header>
+
+  <!-- パスワード画面 -->
+  <div id="pw-screen" class="content">
+    <div class="card" style="margin-top:32px;">
+      <div class="card-title" style="text-align:center;margin-bottom:16px;">🔒 管理者ログイン</div>
+      <div class="form-group">
+        <label class="form-label">パスワード</label>
+        <input type="password" id="pw-input" class="form-control" placeholder="パスワードを入力">
+      </div>
+      <div id="pw-error" class="error-msg">パスワードが違います</div>
+      <button class="btn btn-primary" id="pw-btn" onclick="checkPassword()">ログイン</button>
+    </div>
+  </div>
+
+  <!-- 設定画面 -->
+  <div id="admin-screen" class="hidden">
+    <nav class="tab-bar">
+      <button class="tab-item active" onclick="switchTab('settings')">基本設定</button>
+      <button class="tab-item" onclick="switchTab('staff')">スタッフ</button>
+      <button class="tab-item" onclick="switchTab('line')">LINE設定</button>
+    </nav>
+
+    <div class="content">
+      <!-- 基本設定タブ -->
+      <div id="tab-settings" class="tab-panel active">
+        <div id="settings-error" class="error-msg"></div>
+        <div id="settings-success" class="success-msg"></div>
+
+        <div class="form-group">
+          <label class="form-label">管理者メールアドレス</label>
+          <input type="email" id="admin_email" class="form-control" placeholder="admin@gmail.com">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">CCメールアドレス（1行1アドレス）</label>
+          <textarea id="cc_emails" class="form-control" rows="3" placeholder="cc1@example.com&#10;cc2@example.com"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">起床確認の期限時刻</label>
+          <input type="time" id="wakeup_deadline" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">LINE定型文の送信時刻（後で使用）</label>
+          <input type="time" id="line_notify_time" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">シフト対象曜日</label>
+          <div class="checkbox-group" id="shift-days-group">
+            <label class="checkbox-item"><input type="checkbox" value="1"> <span>月</span></label>
+            <label class="checkbox-item"><input type="checkbox" value="2"> <span>火</span></label>
+            <label class="checkbox-item"><input type="checkbox" value="3"> <span>水</span></label>
+            <label class="checkbox-item"><input type="checkbox" value="4"> <span>木</span></label>
+            <label class="checkbox-item"><input type="checkbox" value="5"> <span>金</span></label>
+            <label class="checkbox-item"><input type="checkbox" value="6"> <span>土</span></label>
+            <label class="checkbox-item"><input type="checkbox" value="0"> <span>日</span></label>
+          </div>
+        </div>
+
+        <hr class="divider">
+        <div class="section-title">管理者パスワード変更</div>
+        <div class="form-group">
+          <label class="form-label">新しいパスワード</label>
+          <input type="password" id="new_password" class="form-control" placeholder="新しいパスワード">
+        </div>
+        <div class="form-group">
+          <label class="form-label">確認用パスワード</label>
+          <input type="password" id="confirm_password" class="form-control" placeholder="もう一度入力">
+        </div>
+
+        <button class="btn btn-primary" id="save-settings-btn" onclick="saveSettings()">設定を保存</button>
+      </div>
+
+      <!-- スタッフタブ -->
+      <div id="tab-staff" class="tab-panel">
+        <div id="staff-error" class="error-msg"></div>
+        <div id="staff-success" class="success-msg"></div>
+        <div id="staff-list"></div>
+        <button class="btn btn-outline mt-12 w-full" onclick="addStaff()">＋ スタッフを追加</button>
+      </div>
+
+      <!-- LINE設定タブ -->
+      <div id="tab-line" class="tab-panel">
+        <div class="info-msg">LINE連携は今後実装予定です。設定値の保存のみ行います。</div>
+        <div id="line-error" class="error-msg"></div>
+        <div id="line-success" class="success-msg"></div>
+
+        <div class="form-group">
+          <label class="form-label">Channel Access Token</label>
+          <input type="text" id="line_channel_token" class="form-control" placeholder="LINE Channel Access Token">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Group ID</label>
+          <input type="text" id="line_group_id" class="form-control" placeholder="LINEグループID">
+        </div>
+        <button class="btn btn-primary" id="save-line-btn" onclick="saveLine()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="../js/config.js"></script>
+<script>
+let staffData = [];
+
+// ---- 認証 ----
+
+function checkPassword() {
+  const pw  = document.getElementById('pw-input').value.trim();
+  const btn = document.getElementById('pw-btn');
+  if (!pw) return;
+  btn.disabled = true;
+  btn.textContent = '確認中…';
+
+  const cbName = 'cb_pw_' + Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    btn.disabled = false;
+    btn.textContent = 'ログイン';
+    if (res.success && res.data && res.data.ok) {
+      sessionStorage.setItem('admin_ok', '1');
+      showAdminScreen();
+    } else {
+      document.getElementById('pw-error').classList.add('show');
+    }
+  };
+  jsonp(GAS_URL.admin, { action: 'checkPassword', password: pw }, cbName);
+}
+
+document.getElementById('pw-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') checkPassword();
+});
+
+function showAdminScreen() {
+  document.getElementById('pw-screen').classList.add('hidden');
+  document.getElementById('admin-screen').classList.remove('hidden');
+  loadSettings();
+  loadStaff();
+}
+
+if (sessionStorage.getItem('admin_ok')) showAdminScreen();
+
+// ---- タブ ----
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.tab-item').forEach(function(el) { el.classList.remove('active'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ---- 設定ロード ----
+
+function loadSettings() {
+  const cbName = 'cb_settings_' + Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    if (!res.success) return;
+    const d = res.data;
+    setVal('admin_email',      d.admin_email      || '');
+    setVal('cc_emails',        (d.cc_emails || '').replace(/,/g, '\n'));
+    setVal('wakeup_deadline',  d.wakeup_deadline  || '08:00');
+    setVal('line_notify_time', d.line_notify_time || '07:00');
+    setVal('line_channel_token', d.line_channel_token || '');
+    setVal('line_group_id',    d.line_group_id    || '');
+
+    const days = (d.shift_days || '').split(',').map(function(s) { return s.trim(); });
+    document.querySelectorAll('#shift-days-group input[type=checkbox]').forEach(function(cb) {
+      cb.checked = days.indexOf(cb.value) >= 0;
+    });
+  };
+  jsonp(GAS_URL.admin, { action: 'getSettings' }, cbName);
+}
+
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.value = val;
+}
+
+// ---- 設定保存 ----
+
+function saveSettings() {
+  const newPw  = document.getElementById('new_password').value;
+  const confPw = document.getElementById('confirm_password').value;
+  const errEl  = document.getElementById('settings-error');
+  const sucEl  = document.getElementById('settings-success');
+  errEl.classList.remove('show');
+  sucEl.classList.remove('show');
+
+  if (newPw && newPw !== confPw) {
+    errEl.textContent = 'パスワードが一致しません';
+    errEl.classList.add('show');
+    return;
+  }
+
+  const days = [];
+  document.querySelectorAll('#shift-days-group input[type=checkbox]:checked').forEach(function(cb) {
+    days.push(cb.value);
+  });
+
+  const ccRaw = document.getElementById('cc_emails').value
+    .split('\n').map(function(s) { return s.trim(); }).filter(Boolean).join(',');
+
+  const form = document.createElement('form');
+  const data = {
+    action:          'updateSettings',
+    admin_email:     document.getElementById('admin_email').value,
+    cc_emails:       ccRaw,
+    wakeup_deadline: document.getElementById('wakeup_deadline').value,
+    line_notify_time:document.getElementById('line_notify_time').value,
+    shift_days:      days.join(','),
+  };
+  if (newPw) data.admin_password = newPw;
+
+  const btn = document.getElementById('save-settings-btn');
+  btn.disabled = true;
+  btn.textContent = '保存中…';
+
+  postNoCors(GAS_URL.admin, data, function() {
+    btn.disabled = false;
+    btn.textContent = '設定を保存';
+    sucEl.textContent = '保存しました';
+    sucEl.classList.add('show');
+    document.getElementById('new_password').value    = '';
+    document.getElementById('confirm_password').value = '';
+  });
+}
+
+function saveLine() {
+  const btn = document.getElementById('save-line-btn');
+  const sucEl = document.getElementById('line-success');
+  btn.disabled = true;
+  btn.textContent = '保存中…';
+  postNoCors(GAS_URL.admin, {
+    action:              'updateSettings',
+    line_channel_token:  document.getElementById('line_channel_token').value,
+    line_group_id:       document.getElementById('line_group_id').value,
+  }, function() {
+    btn.disabled = false;
+    btn.textContent = '保存';
+    sucEl.textContent = '保存しました';
+    sucEl.classList.add('show');
+  });
+}
+
+// ---- スタッフ管理 ----
+
+function loadStaff() {
+  const cbName = 'cb_staff_' + Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    if (!res.success) return;
+    staffData = res.data;
+    renderStaff();
+  };
+  jsonp(GAS_URL.admin, { action: 'getStaffList' }, cbName);
+}
+
+function renderStaff() {
+  const container = document.getElementById('staff-list');
+  container.innerHTML = '';
+  staffData.forEach(function(s, i) {
+    const div = document.createElement('div');
+    div.className = 'staff-row';
+    div.innerHTML =
+      '<input class="staff-name-input" type="text" value="' + esc(s.name) + '" data-idx="' + i + '" placeholder="スタッフ名">' +
+      '<label class="staff-toggle"><input type="checkbox"' + (s.enabled ? ' checked' : '') + ' data-idx="' + i + '" onchange="toggleEnabled(this)"> 有効</label>' +
+      '<button class="staff-del-btn" onclick="deleteStaff(' + i + ')">削除</button>';
+    container.appendChild(div);
+    div.querySelector('input[type=text]').addEventListener('change', function(e) {
+      updateStaffName(parseInt(e.target.dataset.idx, 10), e.target.value);
+    });
+  });
+}
+
+function toggleEnabled(cb) {
+  const idx = parseInt(cb.dataset.idx, 10);
+  const s   = staffData[idx];
+  postNoCors(GAS_URL.admin, {
+    action:  'updateStaff',
+    row:     String(s.row),
+    enabled: cb.checked ? 'true' : 'false',
+  }, function() { showToast(cb.checked ? '有効にしました' : '無効にしました'); });
+}
+
+function updateStaffName(idx, name) {
+  const s = staffData[idx];
+  postNoCors(GAS_URL.admin, {
+    action: 'updateStaff',
+    row:    String(s.row),
+    name:   name,
+  }, function() { showToast('名前を更新しました'); });
+}
+
+function addStaff() {
+  const name = prompt('追加するスタッフ名を入力してください');
+  if (!name) return;
+  postNoCors(GAS_URL.admin, { action: 'addStaff', name: name }, function() {
+    showToast('スタッフを追加しました');
+    setTimeout(loadStaff, 500);
+  });
+}
+
+function deleteStaff(idx) {
+  const s = staffData[idx];
+  if (!confirm(s.name + ' を削除しますか？')) return;
+  postNoCors(GAS_URL.admin, { action: 'deleteStaff', row: String(s.row) }, function() {
+    showToast('削除しました');
+    setTimeout(loadStaff, 500);
+  });
+}
+
+// ---- ユーティリティ ----
+
+function jsonp(url, params, cbName) {
+  const qs = Object.keys(params).map(function(k) {
+    return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+  }).join('&');
+  const script = document.createElement('script');
+  script.src   = url + '?' + qs + '&callback=' + cbName;
+  script.onerror = function() {
+    cleanup(cbName);
+    if (typeof window[cbName] === 'function') window[cbName]({ success: false, error: 'network error' });
+  };
+  document.head.appendChild(script);
+}
+
+function cleanup(cbName) {
+  delete window[cbName];
+  document.querySelectorAll('script[src*="' + cbName + '"]').forEach(function(el) { el.remove(); });
+}
+
+function postNoCors(url, params, cb) {
+  const form = document.createElement('form');
+  Object.keys(params).forEach(function(k) {
+    const input = document.createElement('input');
+    input.type  = 'hidden';
+    input.name  = k;
+    input.value = params[k];
+    form.appendChild(input);
+  });
+  const fd = new FormData(form);
+  fetch(url, { method: 'POST', mode: 'no-cors', body: fd })
+    .then(function() { setTimeout(cb, 3000); })
+    .catch(function() { setTimeout(cb, 3000); });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+
+function esc(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

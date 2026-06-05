@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>起床確認 | 字幕システム</title>
+<link rel="stylesheet" href="../css/common.css">
+<style>
+.wakeup-btn-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 0;
+}
+.wakeup-big-btn {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: none;
+  background: var(--green-400);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(29,158,117,0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
+  font-family: var(--font);
+  line-height: 1.3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.wakeup-big-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 4px 12px rgba(29,158,117,0.25);
+}
+.wakeup-big-btn:disabled {
+  background: var(--gray-400);
+  box-shadow: none;
+  cursor: default;
+  transform: none;
+}
+.wakeup-icon {
+  font-size: 36px;
+}
+.sent-msg {
+  text-align: center;
+  padding: 24px 0;
+  font-size: 16px;
+  color: var(--green-600);
+  font-weight: 600;
+}
+.no-shift-msg {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-hint);
+  font-size: 15px;
+}
+.deadline-info {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-hint);
+  margin-top: 12px;
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="header">
+    <div class="header-logo">🌅</div>
+    <div class="header-text">
+      <div class="header-title">起床確認</div>
+      <div class="header-sub">出勤日の朝に押してください</div>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="form-group">
+      <label class="form-label">スタッフ名</label>
+      <select id="staff-name" class="form-control" onchange="onStaffChange()">
+        <option value="">名前を選択してください</option>
+      </select>
+    </div>
+
+    <div id="error-msg" class="error-msg"></div>
+
+    <div id="wakeup-area" class="hidden">
+      <!-- 本日シフトあり・未押下 -->
+      <div id="btn-area" class="hidden">
+        <div class="wakeup-btn-wrap">
+          <button class="wakeup-big-btn" id="wakeup-btn" onclick="submitWakeup()">
+            <span class="wakeup-icon">🌄</span>
+            <span>起床OK</span>
+          </button>
+          <div class="deadline-info" id="deadline-info"></div>
+        </div>
+      </div>
+
+      <!-- 押下済み -->
+      <div id="sent-area" class="hidden">
+        <div class="card" style="margin-top:16px;">
+          <div class="sent-msg">
+            ✅ <span id="sent-time"></span> に送信済みです
+          </div>
+        </div>
+      </div>
+
+      <!-- 本日シフトなし -->
+      <div id="no-shift-area" class="hidden">
+        <div class="card" style="margin-top:16px;">
+          <div class="no-shift-msg">
+            本日のシフトはありません
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="../js/config.js"></script>
+<script>
+loadStaffNames();
+
+function loadStaffNames() {
+  const cbName = 'cb_staff_' + Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    const names = (res.success && res.data) ? res.data : [];
+    const sel = document.getElementById('staff-name');
+    sel.innerHTML = '<option value="">名前を選択してください</option>';
+    names.forEach(function(n) {
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n;
+      sel.appendChild(opt);
+    });
+  };
+  jsonp(GAS_URL.wakeup, { action: 'getStaff' }, cbName);
+}
+
+function onStaffChange() {
+  const name = document.getElementById('staff-name').value;
+  hideAll();
+  document.getElementById('error-msg').classList.remove('show');
+  if (!name) return;
+
+  const cbName = 'cb_check_' + Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    if (!res.success) {
+      showError('データの取得に失敗しました');
+      return;
+    }
+    const d = res.data;
+    document.getElementById('wakeup-area').classList.remove('hidden');
+
+    if (!d.onShift) {
+      document.getElementById('no-shift-area').classList.remove('hidden');
+      return;
+    }
+
+    if (d.pressedAt) {
+      document.getElementById('sent-time').textContent = d.pressedAt;
+      document.getElementById('sent-area').classList.remove('hidden');
+    } else {
+      document.getElementById('deadline-info').textContent = '期限：' + (d.deadline || '');
+      document.getElementById('btn-area').classList.remove('hidden');
+    }
+  };
+  jsonp(GAS_URL.wakeup, { action: 'checkTodayShift', name: name }, cbName);
+}
+
+function submitWakeup() {
+  const name = document.getElementById('staff-name').value;
+  if (!name) return;
+
+  const btn = document.getElementById('wakeup-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="wakeup-icon">⏳</span><span>送信中…</span>';
+
+  postNoCors(GAS_URL.wakeup, { action: 'submitWakeup', name: name }, function() {
+    document.getElementById('btn-area').classList.add('hidden');
+    document.getElementById('wakeup-area').classList.remove('hidden');
+
+    // 送信後は「送信しました」メッセージ表示
+    const now = new Date();
+    const hh  = String(now.getHours()).padStart(2, '0');
+    const mm  = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('sent-time').textContent = hh + ':' + mm;
+    document.getElementById('sent-area').classList.remove('hidden');
+    showToast('送信しました');
+  });
+}
+
+function hideAll() {
+  ['btn-area','sent-area','no-shift-area'].forEach(function(id) {
+    document.getElementById(id).classList.add('hidden');
+  });
+  document.getElementById('wakeup-area').classList.add('hidden');
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+// ---- ユーティリティ ----
+function jsonp(url, params, cbName) {
+  const qs = Object.keys(params).map(function(k) {
+    return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+  }).join('&');
+  const script = document.createElement('script');
+  script.src = url + '?' + qs + '&callback=' + cbName;
+  script.onerror = function() {
+    cleanup(cbName);
+    if (typeof window[cbName] === 'function') window[cbName]({ success: false, error: 'network error' });
+  };
+  document.head.appendChild(script);
+}
+
+function cleanup(cbName) {
+  delete window[cbName];
+  document.querySelectorAll('script[src*="' + cbName + '"]').forEach(function(el) { el.remove(); });
+}
+
+function postNoCors(url, params, cb) {
+  const form = document.createElement('form');
+  Object.keys(params).forEach(function(k) {
+    const input = document.createElement('input');
+    input.type = 'hidden'; input.name = k; input.value = params[k];
+    form.appendChild(input);
+  });
+  fetch(url, { method: 'POST', mode: 'no-cors', body: new FormData(form) })
+    .then(function() { setTimeout(cb, 3000); })
+    .catch(function() { setTimeout(cb, 3000); });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+</script>
+</body>
+</html>

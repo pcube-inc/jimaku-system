@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>字幕システム</title>
+<link rel="stylesheet" href="css/common.css">
+<style>
+.top-hero {
+  background: linear-gradient(135deg, var(--green-600) 0%, var(--green-400) 100%);
+  padding: 32px 20px 28px;
+  color: #fff;
+  text-align: center;
+}
+.top-hero-logo {
+  width: 56px;
+  height: 56px;
+  background: rgba(255,255,255,0.2);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin: 0 auto 12px;
+}
+.top-hero-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.top-hero-sub {
+  font-size: 13px;
+  opacity: 0.85;
+  margin-top: 4px;
+}
+.app-grid {
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.app-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-decoration: none;
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s, transform 0.1s;
+  min-height: 72px;
+}
+.app-card:active {
+  transform: scale(0.98);
+  box-shadow: var(--shadow);
+}
+.app-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+.icon-shift      { background: var(--green-50); }
+.icon-wakeup     { background: var(--amber-50); }
+.icon-attendance { background: #E3F2FD; }
+.icon-trouble    { background: var(--red-50); }
+.app-card-text { flex: 1; }
+.app-card-name {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.app-card-desc {
+  font-size: 12px;
+  color: var(--text-hint);
+}
+.app-card-arrow {
+  font-size: 18px;
+  color: var(--text-hint);
+}
+.top-footer {
+  text-align: center;
+  padding: 20px 16px 32px;
+  font-size: 12px;
+  color: var(--text-hint);
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="top-hero">
+    <div class="top-hero-logo">📋</div>
+    <div class="top-hero-title">字幕システム</div>
+    <div class="top-hero-sub">業務管理アプリ</div>
+  </div>
+
+  <div class="app-grid">
+    <a class="app-card" href="shift/">
+      <div class="app-card-icon icon-shift">📅</div>
+      <div class="app-card-text">
+        <div class="app-card-name">シフト管理</div>
+        <div class="app-card-desc">シフト希望の提出・確定シフトの確認</div>
+      </div>
+      <span class="app-card-arrow">›</span>
+    </a>
+
+    <a class="app-card" href="wakeup/">
+      <div class="app-card-icon icon-wakeup">🌅</div>
+      <div class="app-card-text">
+        <div class="app-card-name">起床確認</div>
+        <div class="app-card-desc">出勤日の朝に起床確認ボタンを押す</div>
+      </div>
+      <span class="app-card-arrow">›</span>
+    </a>
+
+    <a class="app-card" href="attendance/">
+      <div class="app-card-icon icon-attendance">🕐</div>
+      <div class="app-card-text">
+        <div class="app-card-name">出退勤連絡</div>
+        <div class="app-card-desc">出勤・退勤時の打刻と管理者への通知</div>
+      </div>
+      <span class="app-card-arrow">›</span>
+    </a>
+
+    <a class="app-card" href="trouble/">
+      <div class="app-card-icon icon-trouble">🚨</div>
+      <div class="app-card-text">
+        <div class="app-card-name">トラブル対応</div>
+        <div class="app-card-desc">緊急時の第一報・第二報を即時送信</div>
+      </div>
+      <span class="app-card-arrow">›</span>
+    </a>
+
+    <a class="app-card" href="admin/" style="border-color:var(--border-md);">
+      <div class="app-card-icon" style="background:var(--gray-100);">⚙️</div>
+      <div class="app-card-text">
+        <div class="app-card-name" style="color:var(--text-sub);">管理者設定</div>
+        <div class="app-card-desc">スタッフ管理・通知設定（要パスワード）</div>
+      </div>
+      <span class="app-card-arrow">›</span>
+    </a>
+  </div>
+
+  <div class="top-footer">© 字幕システム</div>
+</div>
+</body>
+</html>
