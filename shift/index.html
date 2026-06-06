@@ -171,7 +171,10 @@
 
       <div class="section-title">スタッフ一覧</div>
       <div id="admin-staff-list"></div>
-      <button class="btn btn-outline mt-8 w-full" onclick="addStaffAdmin()">＋ スタッフを追加</button>
+      <div class="row mt-8">
+        <input type="text" id="new-staff-name-shift" class="form-control" placeholder="新しいスタッフ名" style="flex:1;">
+        <button class="btn btn-outline" style="width:auto;padding:0 14px;white-space:nowrap;" onclick="addStaffAdmin()">＋ 追加</button>
+      </div>
 
       <hr class="divider mt-16">
       <div class="section-title">シフト設定</div>
@@ -720,9 +723,11 @@ function updateStaffName(idx, name) {
 }
 
 function addStaffAdmin() {
-  const name = prompt('追加するスタッフ名を入力してください');
-  if (!name) return;
+  const input = document.getElementById('new-staff-name-shift');
+  const name  = input ? input.value.trim() : '';
+  if (!name) { showToast('名前を入力してください'); return; }
   postNoCors(GAS_URL.shift, { action:'addStaff', name:name }, function() {
+    if (input) input.value = '';
     showToast('追加しました'); setTimeout(loadAdminStaffList, 500);
   });
 }

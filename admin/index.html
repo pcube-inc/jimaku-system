@@ -133,7 +133,10 @@
         <div id="staff-error" class="error-msg"></div>
         <div id="staff-success" class="success-msg"></div>
         <div id="staff-list"></div>
-        <button class="btn btn-outline mt-12 w-full" onclick="addStaff()">＋ スタッフを追加</button>
+        <div class="row mt-12">
+          <input type="text" id="new-staff-name" class="form-control" placeholder="新しいスタッフ名" style="flex:1;">
+          <button id="add-staff-btn" class="btn btn-primary" style="width:auto;padding:0 16px;" onclick="addStaff()">追加</button>
+        </div>
       </div>
 
       <!-- LINE設定タブ -->
@@ -352,9 +355,13 @@ function updateStaffName(idx, name) {
 }
 
 function addStaff() {
-  const name = prompt('追加するスタッフ名を入力してください');
-  if (!name) return;
+  const name = document.getElementById('new-staff-name').value.trim();
+  if (!name) { showToast('名前を入力してください'); return; }
+  const btn = document.getElementById('add-staff-btn');
+  btn.disabled = true; btn.textContent = '追加中…';
   postNoCors(GAS_URL.admin, { action: 'addStaff', name: name }, function() {
+    document.getElementById('new-staff-name').value = '';
+    btn.disabled = false; btn.textContent = '追加';
     showToast('スタッフを追加しました');
     setTimeout(loadStaff, 500);
   });
@@ -362,7 +369,7 @@ function addStaff() {
 
 function deleteStaff(idx) {
   const s = staffData[idx];
-  if (!confirm(s.name + ' を削除しますか？')) return;
+  if (!window.confirm(s.name + ' を削除しますか？')) return;
   postNoCors(GAS_URL.admin, { action: 'deleteStaff', row: String(s.row) }, function() {
     showToast('削除しました');
     setTimeout(loadStaff, 500);
