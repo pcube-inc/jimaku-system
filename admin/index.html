@@ -134,8 +134,9 @@
         <div id="staff-success" class="success-msg"></div>
         <div id="staff-list"></div>
         <div class="row mt-12">
-          <input type="text" id="new-staff-name" class="form-control" placeholder="新しいスタッフ名" style="flex:1;">
-          <button id="add-staff-btn" class="btn btn-primary" style="width:auto;padding:0 16px;" onclick="addStaff()">追加</button>
+          <input type="text"  id="new-staff-name"  class="form-control" placeholder="登録名（必須）" style="flex:1;">
+          <input type="email" id="new-staff-email" class="form-control" placeholder="メール（任意）" style="flex:1;">
+          <button id="add-staff-btn" class="btn btn-primary" style="width:auto;padding:0 16px;white-space:nowrap;" onclick="addStaff()">追加</button>
         </div>
       </div>
 
@@ -321,46 +322,70 @@ function loadStaff() {
 function renderStaff() {
   const container = document.getElementById('staff-list');
   container.innerHTML = '';
+  if (!staffData.length) {
+    container.innerHTML = '<p class="text-hint text-center mt-8">スタッフが登録されていません</p>';
+    return;
+  }
   staffData.forEach(function(s, i) {
     const div = document.createElement('div');
     div.className = 'staff-row';
+    div.style.cssText = 'flex-wrap:wrap;gap:6px;padding:10px 0;';
+    // 登録名（C列）・メール（D列）・有効フラグ・削除
     div.innerHTML =
-      '<input class="staff-name-input" type="text" value="' + esc(s.name) + '" data-idx="' + i + '" placeholder="スタッフ名">' +
-      '<label class="staff-toggle"><input type="checkbox"' + (s.enabled ? ' checked' : '') + ' data-idx="' + i + '" onchange="toggleEnabled(this)"> 有効</label>' +
-      '<button class="staff-del-btn" onclick="deleteStaff(' + i + ')">削除</button>';
+      '<div style="width:100%;display:flex;gap:6px;align-items:center;">' +
+        '<span class="text-sm text-hint" style="min-width:60px;">登録名</span>' +
+        '<input class="staff-name-input" type="text" value="' + esc(s.reg_name||'') + '" data-idx="' + i + '" data-field="reg_name" placeholder="登録名（アプリ表示）" style="flex:1;">' +
+      '</div>' +
+      '<div style="width:100%;display:flex;gap:6px;align-items:center;">' +
+        '<span class="text-sm text-hint" style="min-width:60px;">LINE名</span>' +
+        '<input class="staff-name-input" type="text" value="' + esc(s.line_name||'') + '" data-idx="' + i + '" data-field="line_name" placeholder="LINE表示名（自動）" style="flex:1;color:var(--text-hint);">' +
+      '</div>' +
+      '<div style="width:100%;display:flex;gap:6px;align-items:center;">' +
+        '<span class="text-sm text-hint" style="min-width:60px;">メール</span>' +
+        '<input class="staff-name-input" type="email" value="' + esc(s.email||'') + '" data-idx="' + i + '" data-field="email" placeholder="メールアドレス" style="flex:1;">' +
+      '</div>' +
+      '<div style="width:100%;display:flex;gap:6px;align-items:center;justify-content:space-between;">' +
+        '<label class="staff-toggle"><input type="checkbox"' + (s.enabled ? ' checked' : '') + ' data-idx="' + i + '" onchange="toggleEnabled(this)"> 有効</label>' +
+        '<span class="text-sm text-hint">LINE ID: ' + esc(s.line_user_id||'未連携') + '</span>' +
+        '<button class="staff-del-btn" onclick="deleteStaff(' + i + ')">削除</button>' +
+      '</div>';
     container.appendChild(div);
-    div.querySelector('input[type=text]').addEventListener('change', function(e) {
-      updateStaffName(parseInt(e.target.dataset.idx, 10), e.target.value);
+    div.querySelectorAll('input[data-field]').forEach(function(inp) {
+      inp.addEventListener('change', function(e) {
+        updateStaffField(parseInt(e.target.dataset.idx,10), e.target.dataset.field, e.target.value);
+      });
     });
+    // 区切り線
+    const hr = document.createElement('hr');
+    hr.className = 'divider';
+    container.appendChild(hr);
   });
 }
 
 function toggleEnabled(cb) {
-  const idx = parseInt(cb.dataset.idx, 10);
-  const s   = staffData[idx];
-  postNoCors(GAS_URL.admin, {
-    action:  'updateStaff',
-    row:     String(s.row),
-    enabled: cb.checked ? 'true' : 'false',
-  }, function() { showToast(cb.checked ? '有効にしました' : '無効にしました'); });
+  const s = staffData[parseInt(cb.dataset.idx,10)];
+  postNoCors(GAS_URL.admin, { action:'updateStaff', row:String(s.row), enabled:cb.checked?'true':'false' },
+    function() { showToast(cb.checked?'有効にしました':'無効にしました'); });
 }
 
-function updateStaffName(idx, name) {
+function updateStaffField(idx, field, value) {
   const s = staffData[idx];
-  postNoCors(GAS_URL.admin, {
-    action: 'updateStaff',
-    row:    String(s.row),
-    name:   name,
-  }, function() { showToast('名前を更新しました'); });
+  const params = { action:'updateStaff', row:String(s.row) };
+  params[field] = value;
+  postNoCors(GAS_URL.admin, params, function() { showToast('更新しました'); });
 }
 
 function addStaff() {
-  const name = document.getElementById('new-staff-name').value.trim();
-  if (!name) { showToast('名前を入力してください'); return; }
+  const nameEl  = document.getElementById('new-staff-name');
+  const emailEl = document.getElementById('new-staff-email');
+  const name  = nameEl  ? nameEl.value.trim()  : '';
+  const email = emailEl ? emailEl.value.trim() : '';
+  if (!name) { showToast('登録名を入力してください'); return; }
   const btn = document.getElementById('add-staff-btn');
   btn.disabled = true; btn.textContent = '追加中…';
-  postNoCors(GAS_URL.admin, { action: 'addStaff', name: name }, function() {
-    document.getElementById('new-staff-name').value = '';
+  postNoCors(GAS_URL.admin, { action:'addStaff', name:name, email:email }, function() {
+    if (nameEl)  nameEl.value  = '';
+    if (emailEl) emailEl.value = '';
     btn.disabled = false; btn.textContent = '追加';
     showToast('スタッフを追加しました');
     setTimeout(loadStaff, 500);
@@ -369,10 +394,10 @@ function addStaff() {
 
 function deleteStaff(idx) {
   const s = staffData[idx];
-  if (!window.confirm(s.name + ' を削除しますか？')) return;
-  postNoCors(GAS_URL.admin, { action: 'deleteStaff', row: String(s.row) }, function() {
-    showToast('削除しました');
-    setTimeout(loadStaff, 500);
+  const dispName = s.reg_name || s.line_name || '（未登録）';
+  if (!window.confirm(dispName + ' を削除しますか？')) return;
+  postNoCors(GAS_URL.admin, { action:'deleteStaff', row:String(s.row) }, function() {
+    showToast('削除しました'); setTimeout(loadStaff, 500);
   });
 }
 

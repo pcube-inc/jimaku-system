@@ -1,6 +1,9 @@
 // デプロイ前にスプレッドシートIDを設定すること
 const SPREADSHEET_ID = '1gm98VHnJYNo4AnbNYAi71ETMcnsmx-1hcHFJz49S0qY';
 
+// スタッフ一覧列（v2）
+// A(0):line_user_id / B(1):LINE表示名 / C(2):登録名 / D(3):メール / E(4):有効フラグ
+
 function doGet(e) {
   const callback = e.parameter.callback;
   const action   = e.parameter.action || '';
@@ -20,13 +23,9 @@ function doGet(e) {
   }
   const json = JSON.stringify(result);
   if (callback) {
-    return ContentService
-      .createTextOutput(callback + '(' + json + ')')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    return ContentService.createTextOutput(callback+'('+json+')').setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
-  return ContentService
-    .createTextOutput(json)
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
@@ -45,68 +44,52 @@ function doPost(e) {
   } catch(err) {
     result = { success: false, error: err.message };
   }
-  return ContentService
-    .createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
 }
 
 // ---- ヘルパー ----
-
-function openSS() {
-  return SpreadsheetApp.openById(SPREADSHEET_ID);
-}
-
+function openSS() { return SpreadsheetApp.openById(SPREADSHEET_ID); }
 function getSheet(name) {
   const s = openSS().getSheetByName(name);
   if (!s) throw new Error('シートが見つかりません: ' + name);
   return s;
 }
-
 function getSettingMap() {
   const sheet = getSheet('管理者設定');
-  const rows = sheet.getDataRange().getValues();
-  const map = {};
-  for (let i = 1; i < rows.length; i++) {
-    map[rows[i][0]] = rows[i][1];
-  }
+  const rows  = sheet.getDataRange().getValues();
+  const map   = {};
+  for (let i = 1; i < rows.length; i++) { map[rows[i][0]] = rows[i][1]; }
   return map;
 }
-
 function todayStr() {
   const now = new Date();
-  return now.getFullYear() + '-' +
-    String(now.getMonth() + 1).padStart(2, '0') + '-' +
-    String(now.getDate()).padStart(2, '0');
+  return now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
 }
+// 登録名(C)優先、なければLINE表示名(B)
+function staffName(row) {
+  return (row[2] && String(row[2]).trim()) ? String(row[2]).trim() : String(row[1]).trim();
+}
+function isEnabled(row) { return row[4] === true || row[4] === 'TRUE'; }
 
-// ---- GET アクション ----
-
+// ---- GET ----
 function getStaff() {
   const sheet = getSheet('スタッフ一覧');
   const rows  = sheet.getDataRange().getValues();
   const names = [];
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][3] === true || rows[i][3] === 'TRUE') {
-      names.push(rows[i][1]);
-    }
+    if (isEnabled(rows[i])) names.push(staffName(rows[i]));
   }
   return { success: true, data: names };
 }
 
-// LINE IDでスタッフを照合
 function getStaffByLineId(params) {
   const lineUserId = params.lineUserId;
   if (!lineUserId) return { success: false, error: 'lineUserId required' };
-
   const sheet = getSheet('スタッフ一覧');
   const rows  = sheet.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === lineUserId) {
-      const enabled = rows[i][3] === true || rows[i][3] === 'TRUE';
-      return {
-        success: true,
-        data: { found: true, name: rows[i][1], enabled: enabled, row: i + 1 }
-      };
+      return { success: true, data: { found: true, name: staffName(rows[i]), enabled: isEnabled(rows[i]), row: i+1 } };
     }
   }
   return { success: true, data: { found: false } };
@@ -123,9 +106,7 @@ function getMyShift(params) {
     if (rows[i][1] !== name) continue;
     const date  = rows[i][2];
     const parts = date.split('-');
-    if (parseInt(parts[0], 10) === year && parseInt(parts[1], 10) === month) {
-      result[date] = rows[i][3];
-    }
+    if (parseInt(parts[0],10) === year && parseInt(parts[1],10) === month) result[date] = rows[i][3];
   }
   return { success: true, data: result };
 }
@@ -139,8 +120,8 @@ function getShiftRequests(params) {
   for (let i = 1; i < rows.length; i++) {
     const date  = rows[i][2];
     const parts = date.split('-');
-    if (parseInt(parts[0], 10) !== year || parseInt(parts[1], 10) !== month) continue;
-    if (!byDate[date]) byDate[date] = { ok: [], maybe: [], ng: [] };
+    if (parseInt(parts[0],10) !== year || parseInt(parts[1],10) !== month) continue;
+    if (!byDate[date]) byDate[date] = { ok:[], maybe:[], ng:[] };
     const type = rows[i][3];
     if (byDate[date][type]) byDate[date][type].push(rows[i][1]);
   }
@@ -156,17 +137,14 @@ function getConfirmedShift(params) {
   for (let i = 1; i < rows.length; i++) {
     const date  = rows[i][0];
     const parts = date.split('-');
-    if (parseInt(parts[0], 10) !== year || parseInt(parts[1], 10) !== month) continue;
+    if (parseInt(parts[0],10) !== year || parseInt(parts[1],10) !== month) continue;
     if (!byDate[date]) byDate[date] = [];
     byDate[date].push({ name: rows[i][1], type: rows[i][2], confirmed: rows[i][3] });
   }
   return { success: true, data: byDate };
 }
 
-function getSettings() {
-  const map = getSettingMap();
-  return { success: true, data: map };
-}
+function getSettings() { return { success: true, data: getSettingMap() }; }
 
 function getStaffList() {
   const sheet = getSheet('スタッフ一覧');
@@ -175,9 +153,10 @@ function getStaffList() {
   for (let i = 1; i < rows.length; i++) {
     list.push({
       line_user_id: rows[i][0],
-      name:         rows[i][1],
-      email:        rows[i][2],
-      enabled:      rows[i][3] === true || rows[i][3] === 'TRUE',
+      line_name:    rows[i][1],
+      reg_name:     rows[i][2],
+      email:        rows[i][3],
+      enabled:      isEnabled(rows[i]),
       row:          i + 1,
     });
   }
@@ -185,33 +164,24 @@ function getStaffList() {
 }
 
 function checkPassword(params) {
-  const map = getSettingMap();
-  const ok  = params.password === map['admin_password'];
-  return { success: true, data: { ok: ok } };
+  return { success: true, data: { ok: params.password === getSettingMap()['admin_password'] } };
 }
 
-// ---- POST アクション ----
-
+// ---- POST ----
 function submitShift(params) {
   const name  = params.name;
   const sheet = getSheet('シフト希望');
   let entries = [];
   try { entries = JSON.parse(params.entries); } catch(e) {}
-
   const rows = sheet.getDataRange().getValues();
   entries.forEach(function(entry) {
     let found = false;
     for (let i = 1; i < rows.length; i++) {
       if (rows[i][1] === name && rows[i][2] === entry.date) {
-        sheet.getRange(i + 1, 4).setValue(entry.type);
-        rows[i][3] = entry.type;
-        found = true;
-        break;
+        sheet.getRange(i+1,4).setValue(entry.type); rows[i][3] = entry.type; found = true; break;
       }
     }
-    if (!found) {
-      sheet.appendRow([new Date(), name, entry.date, entry.type]);
-    }
+    if (!found) sheet.appendRow([new Date(), name, entry.date, entry.type]);
   });
   return { success: true };
 }
@@ -220,21 +190,15 @@ function confirmShift(params) {
   const sheet = getSheet('確定シフト');
   let entries = [];
   try { entries = JSON.parse(params.entries); } catch(e) {}
-
   entries.forEach(function(entry) {
     const rows = sheet.getDataRange().getValues();
     let found = false;
     for (let i = 1; i < rows.length; i++) {
       if (rows[i][0] === entry.date && rows[i][1] === entry.name) {
-        sheet.getRange(i + 1, 3).setValue(entry.type);
-        sheet.getRange(i + 1, 4).setValue(true);
-        found = true;
-        break;
+        sheet.getRange(i+1,3).setValue(entry.type); sheet.getRange(i+1,4).setValue(true); found = true; break;
       }
     }
-    if (!found) {
-      sheet.appendRow([entry.date, entry.name, entry.type, true]);
-    }
+    if (!found) sheet.appendRow([entry.date, entry.name, entry.type, true]);
   });
   return { success: true };
 }
@@ -242,20 +206,12 @@ function confirmShift(params) {
 function updateSettings(params) {
   const sheet = getSheet('管理者設定');
   const rows  = sheet.getDataRange().getValues();
-  const keys  = Object.keys(params).filter(function(k) { return k !== 'action'; });
-
-  keys.forEach(function(key) {
+  Object.keys(params).filter(function(k){ return k !== 'action'; }).forEach(function(key) {
     let found = false;
     for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] === key) {
-        sheet.getRange(i + 1, 2).setValue(params[key]);
-        found = true;
-        break;
-      }
+      if (rows[i][0] === key) { sheet.getRange(i+1,2).setValue(params[key]); found = true; break; }
     }
-    if (!found) {
-      sheet.appendRow([key, params[key]]);
-    }
+    if (!found) sheet.appendRow([key, params[key]]);
   });
   return { success: true };
 }
@@ -263,56 +219,63 @@ function updateSettings(params) {
 function updateStaff(params) {
   const sheet  = getSheet('スタッフ一覧');
   const rowNum = parseInt(params.row, 10);
-  if (params.name         !== undefined) sheet.getRange(rowNum, 2).setValue(params.name);
-  if (params.email        !== undefined) sheet.getRange(rowNum, 3).setValue(params.email);
-  if (params.enabled      !== undefined) sheet.getRange(rowNum, 4).setValue(params.enabled === 'true');
-  if (params.line_user_id !== undefined) sheet.getRange(rowNum, 1).setValue(params.line_user_id);
+  if (params.line_user_id !== undefined) sheet.getRange(rowNum,1).setValue(params.line_user_id);
+  if (params.line_name    !== undefined) sheet.getRange(rowNum,2).setValue(params.line_name);
+  if (params.reg_name     !== undefined) sheet.getRange(rowNum,3).setValue(params.reg_name);
+  if (params.email        !== undefined) sheet.getRange(rowNum,4).setValue(params.email);
+  if (params.enabled      !== undefined) sheet.getRange(rowNum,5).setValue(params.enabled === 'true');
   return { success: true };
 }
 
 function addStaff(params) {
-  const sheet = getSheet('スタッフ一覧');
-  sheet.appendRow([params.line_user_id || '', params.name || '', params.email || '', true]);
+  getSheet('スタッフ一覧').appendRow([
+    params.line_user_id || '',
+    params.line_name    || '',
+    params.name         || '',   // 登録名
+    params.email        || '',
+    true,
+  ]);
   return { success: true };
 }
 
 function deleteStaff(params) {
-  const sheet  = getSheet('スタッフ一覧');
-  const rowNum = parseInt(params.row, 10);
-  sheet.deleteRow(rowNum);
+  getSheet('スタッフ一覧').deleteRow(parseInt(params.row,10));
   return { success: true };
 }
 
-// LINE IDをスタッフに登録（初回LINEログイン時）
+// LINE IDを照合・登録
 function registerLineId(params) {
-  const lineUserId    = params.lineUserId;
-  const lineUserName  = params.lineUserName || '';
+  const lineUserId   = params.lineUserId;
+  const lineUserName = params.lineUserName || '';
   const sheet = getSheet('スタッフ一覧');
   const rows  = sheet.getDataRange().getValues();
 
   // 既に登録済みか確認
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === lineUserId) {
-      return { success: true, data: { registered: true, name: rows[i][1] } };
+      return { success: true, data: { registered: true, name: staffName(rows[i]) } };
     }
   }
 
-  // 名前一致でリンク
-  if (params.name) {
-    for (let i = 1; i < rows.length; i++) {
-      if (rows[i][1] === params.name && !rows[i][0]) {
-        sheet.getRange(i + 1, 1).setValue(lineUserId);
-        return { success: true, data: { registered: true, name: rows[i][1] } };
+  // 登録名で一致するスタッフを探す
+  for (let i = 1; i < rows.length; i++) {
+    const rn = String(rows[i][2]).trim();
+    const ln = String(rows[i][1]).trim();
+    if ((rn && (rn === lineUserName || rn === params.name)) ||
+        (ln && (ln === lineUserName || ln === params.name))) {
+      if (!rows[i][0]) {
+        sheet.getRange(i+1,1).setValue(lineUserId);
+        if (!rows[i][1]) sheet.getRange(i+1,2).setValue(lineUserName);
+        return { success: true, data: { registered: true, name: staffName(rows[i]) } };
       }
     }
   }
 
-  // 新規追加（管理者が後で名前を設定）
-  sheet.appendRow([lineUserId, lineUserName, '', true]);
+  // 新規登録（管理者が後で登録名を設定）
+  sheet.appendRow([lineUserId, lineUserName, '', '', true]);
   return { success: true, data: { registered: false, lineUserName: lineUserName } };
 }
 
-// LINE グループへメッセージ送信（管理者から手動実行用）
 function sendLineMessageAction(params) {
   const text = params.text;
   if (!text) return { success: false, error: 'text required' };
@@ -321,73 +284,38 @@ function sendLineMessageAction(params) {
   return { success: true };
 }
 
-// ---- LINE Messaging API ----
-
 /**
  * sendDailyMessage()
- * !! この関数はGASエディタで time-based trigger を手動設定する必要があります !!
- * 設定方法: GASエディタ > トリガー > 「トリガーを追加」
- *   関数: sendDailyMessage / イベント: 時間主導型 / 時刻: 毎日 管理者設定の line_notify_time 前後
- * 処理内容: 本日シフトに入っているスタッフ名をLINEグループに送信
+ * !! GASエディタでtime-based triggerを手動設定すること !!
+ * MailApp.sendEmail() の送信上限は無料Gmailで1日100通
  */
 function sendDailyMessage() {
   const settings = getSettingMap();
   const token   = settings['line_channel_token'];
   const groupId = settings['line_group_id'];
-
-  if (!token || !groupId) {
-    Logger.log('LINE設定（Channel Access Token / Group ID）が未設定のためスキップ');
-    return;
-  }
-
+  if (!token || !groupId) { Logger.log('LINE設定未設定'); return; }
   const today = todayStr();
   const sheet = getSheet('確定シフト');
   const rows  = sheet.getDataRange().getValues();
-
   const staffToday = [];
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === today && (rows[i][3] === true || rows[i][3] === 'TRUE')) {
       staffToday.push({ name: rows[i][1], type: rows[i][2] });
     }
   }
-
-  if (staffToday.length === 0) {
-    Logger.log('本日シフトのスタッフなし');
-    return;
-  }
-
-  const lines = staffToday.map(function(s) {
-    return s.name + 'さん（' + (s.type || '業務') + '）';
-  });
-
-  const message =
-    '【本日のシフト】\n' +
-    '本日の担当は\n' +
-    lines.join('\n') + '\nです。\nよろしくお願いします。';
-
-  sendLineMessage(groupId, message, token);
-  Logger.log('LINE送信完了: ' + message);
+  if (!staffToday.length) return;
+  const lines = staffToday.map(function(s){ return s.name+'さん（'+(s.type||'業務')+'）'; });
+  sendLineMessage(groupId, '【本日のシフト】\n本日の担当は\n'+lines.join('\n')+'\nです。\nよろしくお願いします。', token);
 }
 
-/**
- * LINEグループへテキストメッセージをプッシュ送信
- * @param {string} to      送信先ID（グループIDまたはユーザーID）
- * @param {string} text    送信テキスト
- * @param {string} token   Channel Access Token
- */
 function sendLineMessage(to, text, token) {
   if (!to || !text || !token) return;
-  const url = 'https://api.line.me/v2/bot/message/push';
   const options = {
-    method: 'post',
-    contentType: 'application/json',
-    headers: { 'Authorization': 'Bearer ' + token },
-    payload: JSON.stringify({
-      to: to,
-      messages: [{ type: 'text', text: text }]
-    }),
+    method: 'post', contentType: 'application/json',
+    headers: { 'Authorization': 'Bearer '+token },
+    payload: JSON.stringify({ to: to, messages: [{ type: 'text', text: text }] }),
     muteHttpExceptions: true,
   };
-  const res = UrlFetchApp.fetch(url, options);
-  Logger.log('LINE API: ' + res.getResponseCode() + ' ' + res.getContentText());
+  const res = UrlFetchApp.fetch('https://api.line.me/v2/bot/message/push', options);
+  Logger.log('LINE API: '+res.getResponseCode()+' '+res.getContentText());
 }
