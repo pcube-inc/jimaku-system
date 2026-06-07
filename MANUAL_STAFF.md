@@ -17,7 +17,7 @@
 
 以下のQRコードをLINEで読み取るか、URLをタップして友達追加してください。
 
-![LINE友達追加QRコード](docs/line_qr.png)
+![LINE友達追加QRコード](docs/業務連絡システム_LINE友だち追加.png)
 
 **友達追加URL：** https://line.me/R/ti/p/@305lsedx
 
