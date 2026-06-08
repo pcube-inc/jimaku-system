@@ -3,45 +3,37 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>管理者設定 | 字幕システム</title>
+<title>管理者設定 | P-CUBE（字幕）</title>
 <link rel="stylesheet" href="../css/common.css">
 <style>
-.staff-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-}
-.staff-row:last-child { border-bottom: none; }
-.staff-name-input {
-  flex: 1;
-  min-height: 36px;
-  padding: 6px 10px;
-  border: 1.5px solid var(--border-md);
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-family: var(--font);
-}
-.staff-toggle {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-sub);
-  white-space: nowrap;
-}
-.staff-del-btn {
-  min-height: 36px;
-  min-width: 36px;
-  padding: 6px 10px;
-  border-radius: var(--radius);
-  border: 1.5px solid rgba(226,75,74,0.3);
-  background: var(--red-50);
-  color: var(--red-600);
-  font-size: 13px;
-  cursor: pointer;
-}
+.staff-row { display:flex; flex-wrap:wrap; gap:6px; padding:10px 0; border-bottom:1px solid var(--border); }
+.staff-row:last-child { border-bottom:none; }
+.staff-name-input { flex:1; min-height:36px; padding:6px 10px; border:1.5px solid var(--border-md); border-radius:var(--radius); font-size:14px; font-family:var(--font); }
+.staff-toggle { display:flex; align-items:center; gap:4px; font-size:12px; color:var(--text-sub); white-space:nowrap; }
+.staff-del-btn { min-height:36px; min-width:36px; padding:6px 10px; border-radius:var(--radius); border:1.5px solid rgba(226,75,74,0.3); background:var(--red-50); color:var(--red-600); font-size:13px; cursor:pointer; }
+.confirm-row { border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; margin-bottom:8px; }
+.confirm-row-head { font-size:13px; font-weight:700; margin-bottom:8px; }
+.confirm-entry { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+.confirm-entry select { flex:1; height:36px; font-size:13px; padding:4px 8px; border:1.5px solid var(--border-md); border-radius:var(--radius); }
+.confirm-add-btn { height:36px; padding:0 10px; border-radius:var(--radius); border:1.5px solid var(--green-400); background:var(--green-50); color:var(--green-600); font-size:13px; cursor:pointer; }
+.confirm-del-btn { height:36px; padding:0 10px; border-radius:var(--radius); border:1.5px solid var(--border-md); background:var(--gray-100); color:var(--red-400); font-size:13px; cursor:pointer; }
+.auto-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:1.5px solid var(--amber-400); background:var(--amber-50); color:var(--amber-600); font-size:14px; font-weight:600; cursor:pointer; margin-bottom:8px; }
+.decide-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:none; background:var(--green-400); color:#fff; font-size:15px; font-weight:700; cursor:pointer; margin-top:12px; }
+.line-send-panel { background:var(--green-50); border:1px solid rgba(29,158,117,0.2); border-radius:var(--radius-lg); padding:14px; margin-top:16px; }
+.conf-list-item { border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; margin-bottom:8px; }
+.conf-list-head { font-size:13px; font-weight:700; margin-bottom:6px; }
+
+/* シフト設定カレンダー */
+.setting-cal-nav { display:flex; align-items:center; justify-content:space-between; margin:10px 0; }
+.setting-cal-title { font-size:14px; font-weight:700; }
+.setting-cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-bottom:10px; }
+.setting-cal-dow { text-align:center; font-size:10px; font-weight:700; color:var(--text-hint); padding:3px 0; }
+.setting-cal-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:8px; font-size:12px; cursor:pointer; border:2px solid transparent; user-select:none; }
+.setting-cal-day.empty { cursor:default; }
+.setting-cal-day.shift-day { background:var(--green-50); border-color:var(--green-400); color:var(--green-600); font-weight:700; }
+.setting-cal-day.extra-day { background:var(--green-400); color:#fff; font-weight:700; }
+.setting-cal-day.excluded-day { background:var(--gray-100); color:var(--text-hint); text-decoration:line-through; border-color:var(--gray-400); }
+.setting-cal-day.past { opacity:.4; cursor:default; }
 </style>
 </head>
 <body>
@@ -50,8 +42,9 @@
     <div class="header-logo">⚙</div>
     <div class="header-text">
       <div class="header-title">管理者設定</div>
-      <div class="header-sub">字幕システム</div>
+      <div class="header-sub">P-CUBE（字幕）</div>
     </div>
+    <a class="header-back" href="../">🏠 ホーム</a>
   </header>
 
   <!-- パスワード画面 -->
@@ -70,81 +63,39 @@
   <!-- 設定画面 -->
   <div id="admin-screen" class="hidden">
     <nav class="tab-bar">
-      <button class="tab-item active" onclick="switchTab('settings')">基本設定</button>
-      <button class="tab-item" onclick="switchTab('staff')">スタッフ</button>
-      <button class="tab-item" onclick="switchTab('line')">LINE設定</button>
+      <button class="tab-item active" onclick="switchTab('settings',this)">基本設定</button>
+      <button class="tab-item" onclick="switchTab('shift-mgmt',this)">シフト管理</button>
+      <button class="tab-item" onclick="switchTab('staff',this)">スタッフ管理</button>
+      <button class="tab-item" onclick="switchTab('templates',this)">定型文</button>
     </nav>
 
     <div class="content">
-      <!-- 基本設定タブ -->
+
+      <!-- ===== 基本設定 ===== -->
       <div id="tab-settings" class="tab-panel active">
-        <div id="settings-error" class="error-msg"></div>
+        <div id="settings-error"   class="error-msg"></div>
         <div id="settings-success" class="success-msg"></div>
 
+        <div class="section-title">通知設定</div>
         <div class="form-group">
           <label class="form-label">管理者メールアドレス</label>
           <input type="email" id="admin_email" class="form-control" placeholder="admin@gmail.com">
         </div>
-
         <div class="form-group">
           <label class="form-label">CCメールアドレス（1行1アドレス）</label>
           <textarea id="cc_emails" class="form-control" rows="3" placeholder="cc1@example.com&#10;cc2@example.com"></textarea>
         </div>
-
         <div class="form-group">
           <label class="form-label">起床確認の期限時刻</label>
           <input type="time" id="wakeup_deadline" class="form-control">
         </div>
-
         <div class="form-group">
-          <label class="form-label">LINE定型文の送信時刻（後で使用）</label>
+          <label class="form-label">LINE定型文の送信時刻</label>
           <input type="time" id="line_notify_time" class="form-control">
         </div>
 
-        <div class="form-group">
-          <label class="form-label">シフト対象曜日</label>
-          <div class="checkbox-group" id="shift-days-group">
-            <label class="checkbox-item"><input type="checkbox" value="1"> <span>月</span></label>
-            <label class="checkbox-item"><input type="checkbox" value="2"> <span>火</span></label>
-            <label class="checkbox-item"><input type="checkbox" value="3"> <span>水</span></label>
-            <label class="checkbox-item"><input type="checkbox" value="4"> <span>木</span></label>
-            <label class="checkbox-item"><input type="checkbox" value="5"> <span>金</span></label>
-            <label class="checkbox-item"><input type="checkbox" value="6"> <span>土</span></label>
-            <label class="checkbox-item"><input type="checkbox" value="0"> <span>日</span></label>
-          </div>
-        </div>
-
-        <hr class="divider">
-        <div class="section-title">管理者パスワード変更</div>
-        <div class="form-group">
-          <label class="form-label">新しいパスワード</label>
-          <input type="password" id="new_password" class="form-control" placeholder="新しいパスワード">
-        </div>
-        <div class="form-group">
-          <label class="form-label">確認用パスワード</label>
-          <input type="password" id="confirm_password" class="form-control" placeholder="もう一度入力">
-        </div>
-
-        <button class="btn btn-primary" id="save-settings-btn" onclick="saveSettings()">設定を保存</button>
-      </div>
-
-      <!-- スタッフタブ -->
-      <div id="tab-staff" class="tab-panel">
-        <div id="staff-error" class="error-msg"></div>
-        <div id="staff-success" class="success-msg"></div>
-        <div id="staff-list"></div>
-        <div class="row mt-12">
-          <input type="text"  id="new-staff-name"  class="form-control" placeholder="登録名（必須）" style="flex:1;">
-          <input type="email" id="new-staff-email" class="form-control" placeholder="メール（任意）" style="flex:1;">
-          <button id="add-staff-btn" class="btn btn-primary" style="width:auto;padding:0 16px;white-space:nowrap;" onclick="addStaff()">追加</button>
-        </div>
-      </div>
-
-      <!-- LINE設定タブ -->
-      <div id="tab-line" class="tab-panel">
-<div id="line-error" class="error-msg"></div>
-        <div id="line-success" class="success-msg"></div>
-
+        <hr class="divider mt-16">
+        <div class="section-title">LINE設定</div>
         <div class="form-group">
           <label class="form-label">Channel Access Token</label>
           <input type="text" id="line_channel_token" class="form-control" placeholder="LINE Channel Access Token">
@@ -153,8 +104,138 @@
           <label class="form-label">Group ID</label>
           <input type="text" id="line_group_id" class="form-control" placeholder="LINEグループID">
         </div>
-        <button class="btn btn-primary" id="save-line-btn" onclick="saveLine()">保存</button>
+
+        <hr class="divider mt-16">
+        <div class="section-title">パスワード変更</div>
+        <div class="form-group">
+          <label class="form-label">新しいパスワード</label>
+          <input type="password" id="new_password" class="form-control" placeholder="新しいパスワード">
+        </div>
+        <div class="form-group">
+          <label class="form-label">確認用パスワード</label>
+          <input type="password" id="confirm_password" class="form-control" placeholder="もう一度入力">
+        </div>
+        <button class="btn btn-primary" id="save-settings-btn" onclick="saveSettings()">設定を保存</button>
       </div>
+
+      <!-- ===== シフト管理 ===== -->
+      <div id="tab-shift-mgmt" class="tab-panel">
+        <nav class="sub-tab-bar">
+          <button class="sub-tab-item active" onclick="switchSubTab('shift-input',this)">シフト入力</button>
+          <button class="sub-tab-item" onclick="switchSubTab('shift-confirmed',this)">シフト確定</button>
+          <button class="sub-tab-item" onclick="switchSubTab('shift-settings',this)">シフト設定</button>
+        </nav>
+
+        <!-- シフト入力 -->
+        <div id="subtab-shift-input" class="sub-tab-panel active">
+          <div class="row mb-12">
+            <select id="conf-year"  class="form-control" onchange="loadConfirmInput()"></select>
+            <select id="conf-month" class="form-control" onchange="loadConfirmInput()"></select>
+          </div>
+          <button class="auto-btn" onclick="autoGenerate()">🤖 仮作成（希望を元に自動生成）</button>
+          <div id="conf-error"   class="error-msg"></div>
+          <div id="conf-success" class="success-msg"></div>
+          <div id="confirm-input-list"></div>
+          <button class="decide-btn" id="save-confirm-btn" onclick="saveConfirmed()">✅ 決定（シフト確定へ反映）</button>
+        </div>
+
+        <!-- シフト確定（管理者閲覧・LINE送信） -->
+        <div id="subtab-shift-confirmed" class="sub-tab-panel">
+          <div class="row mb-12">
+            <select id="admin-conf-year"  class="form-control" onchange="loadAdminConfirmed()"></select>
+            <select id="admin-conf-month" class="form-control" onchange="loadAdminConfirmed()"></select>
+          </div>
+          <div id="admin-conf-list"></div>
+
+          <div class="line-send-panel">
+            <div class="card-title" style="color:var(--green-600);margin-bottom:10px;">📨 LINEグループへ送信</div>
+            <div class="form-group" style="margin-bottom:8px;">
+              <input type="date" id="line-send-date" class="form-control" placeholder="送信日">
+            </div>
+            <button class="btn btn-primary" style="background:var(--green-400);" onclick="sendLineShiftMessage()">今すぐ送信</button>
+            <div id="line-send-result" class="success-msg mt-8"></div>
+          </div>
+        </div>
+
+        <!-- シフト設定 -->
+        <div id="subtab-shift-settings" class="sub-tab-panel">
+          <div id="shift-settings-error"   class="error-msg"></div>
+          <div id="shift-settings-success" class="success-msg"></div>
+
+          <div class="form-group">
+            <label class="form-label">提出期限（日付）</label>
+            <input type="date" id="shift-deadline-date" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">シフト対象曜日</label>
+            <div class="checkbox-group" id="admin-shift-days">
+              <label class="checkbox-item"><input type="checkbox" value="1" onchange="renderSettingCal()"> <span>月</span></label>
+              <label class="checkbox-item"><input type="checkbox" value="2" onchange="renderSettingCal()"> <span>火</span></label>
+              <label class="checkbox-item"><input type="checkbox" value="3" onchange="renderSettingCal()"> <span>水</span></label>
+              <label class="checkbox-item"><input type="checkbox" value="4" onchange="renderSettingCal()"> <span>木</span></label>
+              <label class="checkbox-item"><input type="checkbox" value="5" onchange="renderSettingCal()"> <span>金</span></label>
+              <label class="checkbox-item"><input type="checkbox" value="6" onchange="renderSettingCal()"> <span>土</span></label>
+              <label class="checkbox-item"><input type="checkbox" value="0" onchange="renderSettingCal()"> <span>日</span></label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">個別日の追加・除外（カレンダーをタップ）</label>
+            <p class="text-sm text-hint mb-8">🟢緑＝シフト対象 / 🔲グレー＝除外 / タップで切り替え</p>
+            <div class="setting-cal-nav">
+              <button class="cal-nav-btn" onclick="changeSettingCalMonth(-1)">‹</button>
+              <span class="setting-cal-title" id="setting-cal-title"></span>
+              <button class="cal-nav-btn" onclick="changeSettingCalMonth(1)">›</button>
+            </div>
+            <div class="setting-cal-grid" id="setting-cal-grid"></div>
+            <div class="setting-cal-nav">
+              <button class="cal-nav-btn" onclick="changeSettingCalMonth(-1)">‹</button>
+              <span class="setting-cal-title" id="setting-cal-title2"></span>
+              <button class="cal-nav-btn" onclick="changeSettingCalMonth(1)">›</button>
+            </div>
+            <div class="setting-cal-grid" id="setting-cal-grid2"></div>
+          </div>
+
+          <button class="btn btn-primary" onclick="saveShiftSettings()">設定を保存</button>
+        </div>
+      </div>
+
+      <!-- ===== スタッフ管理 ===== -->
+      <div id="tab-staff" class="tab-panel">
+        <div id="staff-error"   class="error-msg"></div>
+        <div id="staff-success" class="success-msg"></div>
+        <div id="staff-list"></div>
+        <hr class="divider mt-12">
+        <div class="section-title">スタッフを追加</div>
+        <div class="row mt-8">
+          <input type="text"  id="new-staff-name"  class="form-control" placeholder="登録名（必須）" style="flex:1;">
+          <input type="email" id="new-staff-email" class="form-control" placeholder="メール（任意）" style="flex:1;">
+          <button id="add-staff-btn" class="btn btn-primary" style="width:auto;padding:0 16px;white-space:nowrap;" onclick="addStaff()">追加</button>
+        </div>
+      </div>
+
+      <!-- ===== 定型文 ===== -->
+      <div id="tab-templates" class="tab-panel">
+        <div id="tmpl-error"   class="error-msg"></div>
+        <div id="tmpl-success" class="success-msg"></div>
+        <p class="text-sm text-hint mb-12">使用可能な変数：<code>{name}</code>（スタッフ名）、<code>{time}</code>（時刻）、<code>{date}</code>（日付）、<code>{deadline}</code>（期限）</p>
+
+        <div class="form-group">
+          <label class="form-label">🌅 起床確認リマインダー（LINEグループ送信用）</label>
+          <textarea id="template_wakeup" class="form-control" rows="4" placeholder="例：本日出勤の {name} さん、起床確認をお願いします。期限：{deadline}"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">🏢 出勤通知（管理者メール件名テンプレート）</label>
+          <textarea id="template_attendance_in" class="form-control" rows="3" placeholder="例：【出勤】{name}さんが出勤しました（{time}）"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">🏠 退勤通知（管理者メール件名テンプレート）</label>
+          <textarea id="template_attendance_out" class="form-control" rows="3" placeholder="例：【退勤】{name}さんが退勤しました（{time}）"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="saveTemplates()">定型文を保存</button>
+      </div>
+
     </div>
   </div>
 </div>
@@ -163,190 +244,479 @@
 
 <script src="../js/config.js"></script>
 <script>
+const DOW_LABELS = ['日','月','火','水','木','金','土'];
+const today = new Date();
 let staffData = [];
+let allStaff  = [];
+let confEntries = {};
+let shiftDays = [1,2,4,5];
+let extraDates = [];
+let excludedDates = [];
+let settingCalYear  = today.getFullYear();
+let settingCalMonth = today.getMonth() + 1;
 
 // ---- 認証 ----
-
 function checkPassword() {
   const pw  = document.getElementById('pw-input').value.trim();
   const btn = document.getElementById('pw-btn');
   if (!pw) return;
-  btn.disabled = true;
-  btn.textContent = '確認中…';
-
-  const cbName = 'cb_pw_' + Date.now();
+  btn.disabled = true; btn.textContent = '確認中…';
+  const cbName = 'cb_pw_'+Date.now();
   window[cbName] = function(res) {
     cleanup(cbName);
-    btn.disabled = false;
-    btn.textContent = 'ログイン';
+    btn.disabled = false; btn.textContent = 'ログイン';
     if (res.success && res.data && res.data.ok) {
-      sessionStorage.setItem('admin_ok', '1');
+      sessionStorage.setItem('admin_ok','1');
       showAdminScreen();
     } else {
       document.getElementById('pw-error').classList.add('show');
     }
   };
-  jsonp(GAS_URL.admin, { action: 'checkPassword', password: pw }, cbName);
+  jsonp(GAS_URL.admin, { action:'checkPassword', password:pw }, cbName);
 }
-
-document.getElementById('pw-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') checkPassword();
-});
+document.getElementById('pw-input').addEventListener('keydown', function(e){ if(e.key==='Enter') checkPassword(); });
 
 function showAdminScreen() {
   document.getElementById('pw-screen').classList.add('hidden');
   document.getElementById('admin-screen').classList.remove('hidden');
+  initAdminSelects();
   loadSettings();
   loadStaff();
 }
-
 if (sessionStorage.getItem('admin_ok')) showAdminScreen();
 
 // ---- タブ ----
-
-function switchTab(name) {
-  document.querySelectorAll('.tab-panel').forEach(function(el) { el.classList.remove('active'); });
-  document.querySelectorAll('.tab-item').forEach(function(el) { el.classList.remove('active'); });
-  document.getElementById('tab-' + name).classList.add('active');
-  event.currentTarget.classList.add('active');
+function switchTab(name, btn) {
+  document.querySelectorAll('#admin-screen .tab-panel').forEach(function(el){ el.classList.remove('active'); });
+  document.querySelectorAll('#admin-screen .tab-item').forEach(function(el){ el.classList.remove('active'); });
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name==='shift-mgmt') { loadConfirmInput(); loadAdminConfirmed(); }
+  if (name==='staff') loadStaff();
+  if (name==='templates') loadTemplates();
 }
 
-// ---- 設定ロード ----
+function switchSubTab(name, btn) {
+  document.querySelectorAll('.sub-tab-panel').forEach(function(el){ el.classList.remove('active'); });
+  document.querySelectorAll('.sub-tab-item').forEach(function(el){ el.classList.remove('active'); });
+  document.getElementById('subtab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name==='shift-confirmed') loadAdminConfirmed();
+  if (name==='shift-settings')  loadShiftSettings();
+}
 
+// ---- 初期セレクト ----
+function initAdminSelects() {
+  ['conf-year','admin-conf-year'].forEach(function(id) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = '';
+    for (let y = today.getFullYear(); y <= today.getFullYear()+1; y++) {
+      const o = document.createElement('option'); o.value=y; o.textContent=y+'年';
+      if (y===today.getFullYear()) o.selected=true;
+      sel.appendChild(o);
+    }
+  });
+  ['conf-month','admin-conf-month'].forEach(function(id) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = '';
+    for (let m = 1; m <= 12; m++) {
+      const o = document.createElement('option'); o.value=m; o.textContent=m+'月';
+      if (m===today.getMonth()+1) o.selected=true;
+      sel.appendChild(o);
+    }
+  });
+}
+
+// ---- 基本設定 ----
 function loadSettings() {
-  const cbName = 'cb_settings_' + Date.now();
+  const cbName = 'cb_settings_'+Date.now();
   window[cbName] = function(res) {
     cleanup(cbName);
     if (!res.success) return;
     const d = res.data;
-    setVal('admin_email',      d.admin_email      || '');
-    setVal('cc_emails',        (d.cc_emails || '').replace(/,/g, '\n'));
-    setVal('wakeup_deadline',  d.wakeup_deadline  || '08:00');
-    setVal('line_notify_time', d.line_notify_time || '07:00');
-    setVal('line_channel_token', d.line_channel_token || '');
-    setVal('line_group_id',    d.line_group_id    || '');
-
-    const days = (d.shift_days || '').split(',').map(function(s) { return s.trim(); });
-    document.querySelectorAll('#shift-days-group input[type=checkbox]').forEach(function(cb) {
-      cb.checked = days.indexOf(cb.value) >= 0;
-    });
+    setVal('admin_email',         d.admin_email      || '');
+    setVal('cc_emails',           (d.cc_emails||'').replace(/,/g,'\n'));
+    setVal('wakeup_deadline',     d.wakeup_deadline  || '08:00');
+    setVal('line_notify_time',    d.line_notify_time || '07:00');
+    setVal('line_channel_token',  d.line_channel_token || '');
+    setVal('line_group_id',       d.line_group_id    || '');
+    shiftDays    = (d.shift_days||'1,2,4,5').split(',').map(Number);
+    extraDates   = (d.shift_extra_dates||'').split(',').filter(Boolean);
+    excludedDates = (d.shift_excluded_dates||'').split(',').filter(Boolean);
   };
-  jsonp(GAS_URL.admin, { action: 'getSettings' }, cbName);
+  jsonp(GAS_URL.admin, { action:'getSettings' }, cbName);
 }
-
-function setVal(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.value = val;
-}
-
-// ---- 設定保存 ----
+function setVal(id, val) { const el=document.getElementById(id); if(el) el.value=val; }
 
 function saveSettings() {
   const newPw  = document.getElementById('new_password').value;
   const confPw = document.getElementById('confirm_password').value;
   const errEl  = document.getElementById('settings-error');
   const sucEl  = document.getElementById('settings-success');
-  errEl.classList.remove('show');
-  sucEl.classList.remove('show');
-
-  if (newPw && newPw !== confPw) {
-    errEl.textContent = 'パスワードが一致しません';
-    errEl.classList.add('show');
-    return;
-  }
-
-  const days = [];
-  document.querySelectorAll('#shift-days-group input[type=checkbox]:checked').forEach(function(cb) {
-    days.push(cb.value);
-  });
-
-  const ccRaw = document.getElementById('cc_emails').value
-    .split('\n').map(function(s) { return s.trim(); }).filter(Boolean).join(',');
-
-  const form = document.createElement('form');
+  errEl.classList.remove('show'); sucEl.classList.remove('show');
+  if (newPw && newPw !== confPw) { errEl.textContent='パスワードが一致しません'; errEl.classList.add('show'); return; }
+  const ccRaw = document.getElementById('cc_emails').value.split('\n').map(function(s){return s.trim();}).filter(Boolean).join(',');
   const data = {
-    action:          'updateSettings',
-    admin_email:     document.getElementById('admin_email').value,
-    cc_emails:       ccRaw,
-    wakeup_deadline: document.getElementById('wakeup_deadline').value,
-    line_notify_time:document.getElementById('line_notify_time').value,
-    shift_days:      days.join(','),
+    action:'updateSettings',
+    admin_email:        document.getElementById('admin_email').value,
+    cc_emails:          ccRaw,
+    wakeup_deadline:    document.getElementById('wakeup_deadline').value,
+    line_notify_time:   document.getElementById('line_notify_time').value,
+    line_channel_token: document.getElementById('line_channel_token').value,
+    line_group_id:      document.getElementById('line_group_id').value,
   };
   if (newPw) data.admin_password = newPw;
-
   const btn = document.getElementById('save-settings-btn');
-  btn.disabled = true;
-  btn.textContent = '保存中…';
-
+  btn.disabled=true; btn.textContent='保存中…';
   postNoCors(GAS_URL.admin, data, function() {
-    btn.disabled = false;
-    btn.textContent = '設定を保存';
-    sucEl.textContent = '保存しました';
-    sucEl.classList.add('show');
-    document.getElementById('new_password').value    = '';
+    btn.disabled=false; btn.textContent='設定を保存';
+    sucEl.textContent='保存しました'; sucEl.classList.add('show');
+    document.getElementById('new_password').value = '';
     document.getElementById('confirm_password').value = '';
   });
 }
 
-function saveLine() {
-  const btn = document.getElementById('save-line-btn');
-  const sucEl = document.getElementById('line-success');
-  btn.disabled = true;
-  btn.textContent = '保存中…';
+// ---- シフト入力（仮作成・確定） ----
+function loadConfirmInput() {
+  const year  = document.getElementById('conf-year').value;
+  const month = document.getElementById('conf-month').value;
+  const cbName = 'cb_conf_'+Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    loadConfirmRequests(year, month, (res.success && res.data) ? res.data : {});
+  };
+  jsonp(GAS_URL.admin, { action:'getConfirmedShift', year:year, month:month }, cbName);
+}
+
+function loadConfirmRequests(year, month, existingConf) {
+  const cbName = 'cb_cReq_'+Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    if (!allStaff.length) {
+      const cb2 = 'cb_allst_'+Date.now();
+      window[cb2] = function(r) {
+        cleanup(cb2);
+        allStaff = (r.success && r.data) ? r.data.map(function(s){return s.reg_name||s.line_name||'';}).filter(Boolean) : [];
+        renderConfirmInput(year, month, existingConf, (res.success && res.data) ? res.data : {});
+      };
+      jsonp(GAS_URL.admin, { action:'getStaffList' }, cb2);
+    } else {
+      renderConfirmInput(year, month, existingConf, (res.success && res.data) ? res.data : {});
+    }
+  };
+  jsonp(GAS_URL.admin, { action:'getShiftRequests', year:year, month:month }, cbName);
+}
+
+function renderConfirmInput(year, month, existingConf, reqDataLocal) {
+  const container = document.getElementById('confirm-input-list');
+  container.innerHTML = '';
+  confEntries = {};
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const dates = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dt = new Date(year, month-1, d);
+    if (shiftDays.indexOf(dt.getDay()) >= 0) dates.push(fmtDate(dt));
+  }
+  if (!dates.length) { container.innerHTML='<p class="text-hint text-center">対象日なし</p>'; return; }
+  dates.forEach(function(date) {
+    const existing = existingConf[date] || [];
+    confEntries[date] = existing.length > 0
+      ? existing.map(function(e){ return {name:e.name, type:e.type}; })
+      : [{name:'', type:'業務A'}];
+    const req = reqDataLocal[date];
+    let hint = '';
+    if (req) {
+      const avail = (req.ok||[]).concat(req.maybe||[]);
+      if (avail.length) hint = '<div class="text-sm text-hint mb-8">希望あり: '+avail.map(esc).join('、')+'</div>';
+    }
+    const row = document.createElement('div');
+    row.className = 'confirm-row'; row.id = 'conf-row-'+date;
+    row.innerHTML = '<div class="confirm-row-head">'+date+hint+'</div>'+
+      '<div class="conf-entries-'+date+'"></div>'+
+      '<button class="confirm-add-btn mt-8" onclick="addConfEntry(\''+date+'\')">＋ 追加</button>';
+    container.appendChild(row);
+    renderConfEntries(date);
+  });
+}
+
+function renderConfEntries(date) {
+  const wrap = document.querySelector('.conf-entries-'+date);
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  (confEntries[date]||[]).forEach(function(entry, i) {
+    const div = document.createElement('div');
+    div.className = 'confirm-entry';
+    div.innerHTML =
+      '<select onchange="confEntries[\''+date+'\']['+i+'].name=this.value">'+
+        '<option value="">選択</option>'+
+        allStaff.map(function(n){return '<option value="'+esc(n)+'"'+(entry.name===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+
+      '</select>'+
+      '<select onchange="confEntries[\''+date+'\']['+i+'].type=this.value">'+
+        '<option value="業務A"'+(entry.type==='業務A'?' selected':'')+'>業務A</option>'+
+        '<option value="業務B"'+(entry.type==='業務B'?' selected':'')+'>業務B</option>'+
+      '</select>'+
+      '<button class="confirm-del-btn" onclick="delConfEntry(\''+date+'\','+i+')">－</button>';
+    wrap.appendChild(div);
+  });
+}
+
+function addConfEntry(date) { confEntries[date].push({name:'',type:'業務A'}); renderConfEntries(date); }
+function delConfEntry(date, i) { confEntries[date].splice(i,1); renderConfEntries(date); }
+
+// 仮作成：シフト希望を元に自動でシフトを生成
+function autoGenerate() {
+  const year  = document.getElementById('conf-year').value;
+  const month = document.getElementById('conf-month').value;
+  const cbName = 'cb_auto_'+Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    const reqData = (res.success && res.data) ? res.data : {};
+    Object.keys(confEntries).forEach(function(date) {
+      const d = reqData[date];
+      if (!d) return;
+      const candidates = (d.ok||[]).concat(d.maybe||[]);
+      if (candidates.length > 0) {
+        confEntries[date] = candidates.map(function(name) { return {name:name, type:'業務A'}; });
+      }
+      renderConfEntries(date);
+    });
+    showToast('仮作成しました。内容を確認・調整してください');
+  };
+  jsonp(GAS_URL.admin, { action:'getShiftRequests', year:year, month:month }, cbName);
+}
+
+function saveConfirmed() {
+  const entries = [];
+  Object.keys(confEntries).forEach(function(date) {
+    confEntries[date].forEach(function(e){ if(e.name) entries.push({date:date, name:e.name, type:e.type}); });
+  });
+  if (!entries.length) {
+    const errEl = document.getElementById('conf-error');
+    errEl.textContent='スタッフを1人以上選択してください'; errEl.classList.add('show'); return;
+  }
+  const btn = document.getElementById('save-confirm-btn');
+  btn.disabled=true; btn.textContent='保存中…';
+  document.getElementById('conf-error').classList.remove('show');
+  postNoCors(GAS_URL.admin, { action:'confirmShift', entries:JSON.stringify(entries) }, function() {
+    btn.disabled=false; btn.textContent='✅ 決定（シフト確定へ反映）';
+    const s = document.getElementById('conf-success');
+    s.textContent='シフトを確定しました'; s.classList.add('show');
+    showToast('シフト確定しました');
+  });
+}
+
+// ---- シフト確定（管理者閲覧） ----
+function loadAdminConfirmed() {
+  const year  = document.getElementById('admin-conf-year').value;
+  const month = document.getElementById('admin-conf-month').value;
+  const cbName = 'cb_aconf_'+Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    renderAdminConfirmed((res.success && res.data) ? res.data : {});
+  };
+  jsonp(GAS_URL.admin, { action:'getConfirmedShift', year:year, month:month }, cbName);
+}
+
+function renderAdminConfirmed(data) {
+  const list = document.getElementById('admin-conf-list');
+  list.innerHTML = '';
+  const dates = Object.keys(data).sort();
+  if (!dates.length) { list.innerHTML='<p class="text-hint text-center mt-8">確定シフトなし</p>'; return; }
+  dates.forEach(function(date) {
+    const div = document.createElement('div');
+    div.className = 'conf-list-item';
+    let html = '<div class="conf-list-head">'+date+'</div>';
+    html += data[date].map(function(e){
+      return '<span class="chip chip-green">'+esc(e.name)+'</span><span class="text-sm text-hint">（'+esc(e.type||'業務')+'）</span> ';
+    }).join('');
+    div.innerHTML = html;
+    list.appendChild(div);
+  });
+}
+
+// LINE送信
+function sendLineShiftMessage() {
+  const date = document.getElementById('line-send-date').value;
+  const resEl = document.getElementById('line-send-result');
+  resEl.classList.remove('show');
+  if (!date) { showToast('送信日を選択してください'); return; }
+  const parts = date.split('-');
+  const cbName = 'cb_linesend_'+Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    if (!res.success || !res.data || !res.data[date] || !res.data[date].length) {
+      showToast('この日の確定シフトがありません'); return;
+    }
+    const staff = res.data[date];
+    const lines = staff.map(function(s){ return s.name+'さん（'+(s.type||'業務')+'）'; });
+    const text = '【シフト連絡】\n'+date+'\n本日の担当は\n'+lines.join('\n')+'\nです。よろしくお願いします。';
+    postNoCors(GAS_URL.admin, { action:'sendLineMessage', text:text }, function() {
+      resEl.textContent='📨 LINEに送信しました'; resEl.classList.add('show');
+    });
+  };
+  jsonp(GAS_URL.admin, { action:'getConfirmedShift', year:parts[0], month:parseInt(parts[1],10) }, cbName);
+}
+
+// ---- シフト設定 ----
+function loadShiftSettings() {
+  const cbName = 'cb_sset_'+Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    if (!res.success) return;
+    const d = res.data;
+    const dlEl = document.getElementById('shift-deadline-date');
+    if (dlEl) dlEl.value = d.shift_deadline || '';
+    shiftDays    = (d.shift_days||'1,2,4,5').split(',').map(Number);
+    extraDates   = (d.shift_extra_dates||'').split(',').filter(Boolean);
+    excludedDates = (d.shift_excluded_dates||'').split(',').filter(Boolean);
+    document.querySelectorAll('#admin-shift-days input[type=checkbox]').forEach(function(cb) {
+      cb.checked = shiftDays.indexOf(parseInt(cb.value)) >= 0;
+    });
+    renderSettingCal();
+  };
+  jsonp(GAS_URL.admin, { action:'getSettings' }, cbName);
+}
+
+let settingCalMonth2 = null;
+let settingCalYear2  = null;
+
+function renderSettingCal() {
+  const checkedDays = [];
+  document.querySelectorAll('#admin-shift-days input[type=checkbox]:checked').forEach(function(cb){ checkedDays.push(parseInt(cb.value)); });
+  _renderOneCal('setting-cal-grid', 'setting-cal-title', settingCalYear, settingCalMonth, checkedDays);
+  const ny = settingCalMonth === 12 ? settingCalYear+1 : settingCalYear;
+  const nm = settingCalMonth === 12 ? 1 : settingCalMonth+1;
+  settingCalYear2  = ny;
+  settingCalMonth2 = nm;
+  _renderOneCal('setting-cal-grid2', 'setting-cal-title2', ny, nm, checkedDays);
+}
+
+function _renderOneCal(gridId, titleId, year, month, checkedDays) {
+  const grid = document.getElementById(gridId);
+  const titleEl = document.getElementById(titleId);
+  if (!grid) return;
+  grid.innerHTML = '';
+  titleEl.textContent = year+'年'+month+'月';
+  DOW_LABELS.forEach(function(d){ const c=document.createElement('div'); c.className='setting-cal-dow'; c.textContent=d; grid.appendChild(c); });
+  const firstDow = new Date(year, month-1, 1).getDay();
+  const days = new Date(year, month, 0).getDate();
+  const todayKey = fmtDate(today);
+  for (let i=0; i<firstDow; i++) { const b=document.createElement('div'); b.className='setting-cal-day empty'; grid.appendChild(b); }
+  for (let d=1; d<=days; d++) {
+    const dt  = new Date(year, month-1, d);
+    const key = fmtDate(dt);
+    const cell = document.createElement('div');
+    cell.textContent = d;
+    cell.className = 'setting-cal-day';
+    const isPast = dt < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    if (isPast) { cell.classList.add('past'); }
+    else {
+      const isExcluded = excludedDates.indexOf(key) >= 0;
+      const isExtra    = extraDates.indexOf(key) >= 0;
+      const isBaseDay  = checkedDays.indexOf(dt.getDay()) >= 0;
+      if (isExcluded) {
+        cell.classList.add('excluded-day');
+      } else if (isExtra) {
+        cell.classList.add('extra-day');
+      } else if (isBaseDay) {
+        cell.classList.add('shift-day');
+      }
+      cell.addEventListener('click', function() { toggleSettingDay(key); renderSettingCal(); });
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function toggleSettingDay(key) {
+  const checkedDays = [];
+  document.querySelectorAll('#admin-shift-days input[type=checkbox]:checked').forEach(function(cb){ checkedDays.push(parseInt(cb.value)); });
+  const dt = new Date(key);
+  const isBaseDay  = checkedDays.indexOf(dt.getDay()) >= 0;
+  const isExcluded = excludedDates.indexOf(key) >= 0;
+  const isExtra    = extraDates.indexOf(key) >= 0;
+  if (isExcluded) {
+    // 除外 → 元に戻す
+    excludedDates = excludedDates.filter(function(d){ return d !== key; });
+  } else if (isExtra) {
+    // 追加 → 元に戻す
+    extraDates = extraDates.filter(function(d){ return d !== key; });
+  } else if (isBaseDay) {
+    // シフト日 → 除外
+    excludedDates.push(key);
+  } else {
+    // 非シフト日 → 追加
+    extraDates.push(key);
+  }
+}
+
+function changeSettingCalMonth(delta) {
+  settingCalMonth += delta;
+  if (settingCalMonth > 12) { settingCalMonth=1; settingCalYear++; }
+  if (settingCalMonth < 1)  { settingCalMonth=12; settingCalYear--; }
+  renderSettingCal();
+}
+
+function saveShiftSettings() {
+  const days = [];
+  document.querySelectorAll('#admin-shift-days input[type=checkbox]:checked').forEach(function(cb){ days.push(cb.value); });
+  const btn = document.querySelector('#subtab-shift-settings .btn-primary');
+  btn.disabled=true; btn.textContent='保存中…';
+  const sucEl = document.getElementById('shift-settings-success');
   postNoCors(GAS_URL.admin, {
-    action:              'updateSettings',
-    line_channel_token:  document.getElementById('line_channel_token').value,
-    line_group_id:       document.getElementById('line_group_id').value,
+    action:'updateSettings',
+    shift_deadline:       document.getElementById('shift-deadline-date').value,
+    shift_days:           days.join(','),
+    shift_extra_dates:    extraDates.join(','),
+    shift_excluded_dates: excludedDates.join(','),
   }, function() {
-    btn.disabled = false;
-    btn.textContent = '保存';
-    sucEl.textContent = '保存しました';
-    sucEl.classList.add('show');
+    btn.disabled=false; btn.textContent='設定を保存';
+    sucEl.textContent='保存しました'; sucEl.classList.add('show');
+    shiftDays = days.map(Number);
+    showToast('シフト設定を保存しました');
   });
 }
 
 // ---- スタッフ管理 ----
-
 function loadStaff() {
-  const cbName = 'cb_staff_' + Date.now();
+  const cbName = 'cb_staff_'+Date.now();
   window[cbName] = function(res) {
     cleanup(cbName);
     if (!res.success) return;
     staffData = res.data;
+    allStaff  = staffData.map(function(s){ return s.reg_name||s.line_name||''; }).filter(Boolean);
     renderStaff();
   };
-  jsonp(GAS_URL.admin, { action: 'getStaffList' }, cbName);
+  jsonp(GAS_URL.admin, { action:'getStaffList' }, cbName);
 }
 
 function renderStaff() {
   const container = document.getElementById('staff-list');
   container.innerHTML = '';
   if (!staffData.length) {
-    container.innerHTML = '<p class="text-hint text-center mt-8">スタッフが登録されていません</p>';
-    return;
+    container.innerHTML='<p class="text-hint text-center mt-8">スタッフが登録されていません</p>'; return;
   }
   staffData.forEach(function(s, i) {
     const div = document.createElement('div');
     div.className = 'staff-row';
-    div.style.cssText = 'flex-wrap:wrap;gap:6px;padding:10px 0;';
-    // 登録名（C列）・メール（D列）・有効フラグ・削除
     div.innerHTML =
-      '<div style="width:100%;display:flex;gap:6px;align-items:center;">' +
-        '<span class="text-sm text-hint" style="min-width:60px;">登録名</span>' +
-        '<input class="staff-name-input" type="text" value="' + esc(s.reg_name||'') + '" data-idx="' + i + '" data-field="reg_name" placeholder="登録名（アプリ表示）" style="flex:1;">' +
-      '</div>' +
-      '<div style="width:100%;display:flex;gap:6px;align-items:center;">' +
-        '<span class="text-sm text-hint" style="min-width:60px;">LINE名</span>' +
-        '<input class="staff-name-input" type="text" value="' + esc(s.line_name||'') + '" data-idx="' + i + '" data-field="line_name" placeholder="LINE表示名（自動）" style="flex:1;color:var(--text-hint);">' +
-      '</div>' +
-      '<div style="width:100%;display:flex;gap:6px;align-items:center;">' +
-        '<span class="text-sm text-hint" style="min-width:60px;">メール</span>' +
-        '<input class="staff-name-input" type="email" value="' + esc(s.email||'') + '" data-idx="' + i + '" data-field="email" placeholder="メールアドレス" style="flex:1;">' +
-      '</div>' +
-      '<div style="width:100%;display:flex;gap:6px;align-items:center;justify-content:space-between;">' +
-        '<label class="staff-toggle"><input type="checkbox"' + (s.enabled ? ' checked' : '') + ' data-idx="' + i + '" onchange="toggleEnabled(this)"> 有効</label>' +
-        '<span class="text-sm text-hint">LINE ID: ' + esc(s.line_user_id||'未連携') + '</span>' +
-        '<button class="staff-del-btn" onclick="deleteStaff(' + i + ')">削除</button>' +
+      '<div style="width:100%;display:flex;gap:6px;align-items:center;">'+
+        '<span class="text-sm text-hint" style="min-width:56px;">登録名</span>'+
+        '<input class="staff-name-input" type="text" value="'+esc(s.reg_name||'')+'" data-idx="'+i+'" data-field="reg_name" placeholder="登録名（アプリ表示）" style="flex:1;">'+
+      '</div>'+
+      '<div style="width:100%;display:flex;gap:6px;align-items:center;">'+
+        '<span class="text-sm text-hint" style="min-width:56px;">LINE名</span>'+
+        '<input class="staff-name-input" type="text" value="'+esc(s.line_name||'')+'" data-idx="'+i+'" data-field="line_name" placeholder="LINE表示名（自動）" style="flex:1;color:var(--text-hint);">'+
+      '</div>'+
+      '<div style="width:100%;display:flex;gap:6px;align-items:center;">'+
+        '<span class="text-sm text-hint" style="min-width:56px;">メール</span>'+
+        '<input class="staff-name-input" type="email" value="'+esc(s.email||'')+'" data-idx="'+i+'" data-field="email" placeholder="メールアドレス" style="flex:1;">'+
+      '</div>'+
+      '<div style="width:100%;display:flex;gap:6px;align-items:center;justify-content:space-between;">'+
+        '<label class="staff-toggle"><input type="checkbox"'+(s.enabled?' checked':'')+' data-idx="'+i+'" onchange="toggleEnabled(this)"> 有効</label>'+
+        '<span class="text-sm text-hint" style="font-size:10px;">LINE ID: '+esc(s.line_user_id||'未連携')+'</span>'+
+        '<button class="staff-del-btn" onclick="deleteStaff('+i+')">削除</button>'+
       '</div>';
     container.appendChild(div);
     div.querySelectorAll('input[data-field]').forEach(function(inp) {
@@ -354,26 +724,21 @@ function renderStaff() {
         updateStaffField(parseInt(e.target.dataset.idx,10), e.target.dataset.field, e.target.value);
       });
     });
-    // 区切り線
-    const hr = document.createElement('hr');
-    hr.className = 'divider';
-    container.appendChild(hr);
+    const hr = document.createElement('hr'); hr.className='divider'; container.appendChild(hr);
   });
 }
 
 function toggleEnabled(cb) {
   const s = staffData[parseInt(cb.dataset.idx,10)];
   postNoCors(GAS_URL.admin, { action:'updateStaff', row:String(s.row), enabled:cb.checked?'true':'false' },
-    function() { showToast(cb.checked?'有効にしました':'無効にしました'); });
+    function(){ showToast(cb.checked?'有効にしました':'無効にしました'); });
 }
-
 function updateStaffField(idx, field, value) {
   const s = staffData[idx];
   const params = { action:'updateStaff', row:String(s.row) };
   params[field] = value;
-  postNoCors(GAS_URL.admin, params, function() { showToast('更新しました'); });
+  postNoCors(GAS_URL.admin, params, function(){ showToast('更新しました'); });
 }
-
 function addStaff() {
   const nameEl  = document.getElementById('new-staff-name');
   const emailEl = document.getElementById('new-staff-email');
@@ -381,69 +746,79 @@ function addStaff() {
   const email = emailEl ? emailEl.value.trim() : '';
   if (!name) { showToast('登録名を入力してください'); return; }
   const btn = document.getElementById('add-staff-btn');
-  btn.disabled = true; btn.textContent = '追加中…';
+  btn.disabled=true; btn.textContent='追加中…';
   postNoCors(GAS_URL.admin, { action:'addStaff', name:name, email:email }, function() {
-    if (nameEl)  nameEl.value  = '';
-    if (emailEl) emailEl.value = '';
-    btn.disabled = false; btn.textContent = '追加';
+    if (nameEl)  nameEl.value='';
+    if (emailEl) emailEl.value='';
+    btn.disabled=false; btn.textContent='追加';
     showToast('スタッフを追加しました');
     setTimeout(loadStaff, 500);
   });
 }
-
 function deleteStaff(idx) {
   const s = staffData[idx];
-  const dispName = s.reg_name || s.line_name || '（未登録）';
-  if (!window.confirm(dispName + ' を削除しますか？')) return;
+  const dispName = s.reg_name||s.line_name||'（未登録）';
+  if (!window.confirm(dispName+' を削除しますか？')) return;
   postNoCors(GAS_URL.admin, { action:'deleteStaff', row:String(s.row) }, function() {
     showToast('削除しました'); setTimeout(loadStaff, 500);
   });
 }
 
-// ---- ユーティリティ ----
-
-function jsonp(url, params, cbName) {
-  const qs = Object.keys(params).map(function(k) {
-    return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
-  }).join('&');
-  const script = document.createElement('script');
-  script.src   = url + '?' + qs + '&callback=' + cbName;
-  script.onerror = function() {
+// ---- 定型文 ----
+function loadTemplates() {
+  const cbName = 'cb_tmpl_'+Date.now();
+  window[cbName] = function(res) {
     cleanup(cbName);
-    if (typeof window[cbName] === 'function') window[cbName]({ success: false, error: 'network error' });
+    if (!res.success) return;
+    const d = res.data;
+    setVal('template_wakeup',          d.template_wakeup          || '');
+    setVal('template_attendance_in',   d.template_attendance_in   || '');
+    setVal('template_attendance_out',  d.template_attendance_out  || '');
   };
-  document.head.appendChild(script);
+  jsonp(GAS_URL.admin, { action:'getSettings' }, cbName);
 }
 
+function saveTemplates() {
+  const sucEl = document.getElementById('tmpl-success');
+  sucEl.classList.remove('show');
+  postNoCors(GAS_URL.admin, {
+    action:                   'updateSettings',
+    template_wakeup:          document.getElementById('template_wakeup').value,
+    template_attendance_in:   document.getElementById('template_attendance_in').value,
+    template_attendance_out:  document.getElementById('template_attendance_out').value,
+  }, function() {
+    sucEl.textContent='保存しました'; sucEl.classList.add('show');
+    showToast('定型文を保存しました');
+  });
+}
+
+// ---- ユーティリティ ----
+function fmtDate(dt) {
+  return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+}
+function jsonp(url, params, cbName) {
+  const qs = Object.keys(params).map(function(k){ return encodeURIComponent(k)+'='+encodeURIComponent(params[k]); }).join('&');
+  const s = document.createElement('script');
+  s.src = url+'?'+qs+'&callback='+cbName;
+  s.onerror = function(){ cleanup(cbName); if(typeof window[cbName]==='function') window[cbName]({success:false}); };
+  document.head.appendChild(s);
+}
 function cleanup(cbName) {
   delete window[cbName];
-  document.querySelectorAll('script[src*="' + cbName + '"]').forEach(function(el) { el.remove(); });
+  document.querySelectorAll('script[src*="'+cbName+'"]').forEach(function(el){el.remove();});
 }
-
 function postNoCors(url, params, cb) {
   const form = document.createElement('form');
-  Object.keys(params).forEach(function(k) {
-    const input = document.createElement('input');
-    input.type  = 'hidden';
-    input.name  = k;
-    input.value = params[k];
-    form.appendChild(input);
-  });
-  const fd = new FormData(form);
-  fetch(url, { method: 'POST', mode: 'no-cors', body: fd })
-    .then(function() { setTimeout(cb, 3000); })
-    .catch(function() { setTimeout(cb, 3000); });
+  Object.keys(params).forEach(function(k){ const i=document.createElement('input'); i.type='hidden'; i.name=k; i.value=params[k]; form.appendChild(i); });
+  fetch(url, { method:'POST', mode:'no-cors', body:new FormData(form) })
+    .then(function(){ setTimeout(cb,3000); }).catch(function(){ setTimeout(cb,3000); });
 }
-
 function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(function() { t.classList.remove('show'); }, 2500);
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); },2500);
 }
-
 function esc(str) {
-  return (str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return (str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 </script>
 </body>

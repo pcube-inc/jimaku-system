@@ -490,3 +490,56 @@ select.form-control {
 .text-sub { color: var(--text-sub); }
 .w-full { width: 100%; }
 .hidden { display: none !important; }
+
+/* Back button in header */
+.header-back {
+  font-size: 12px;
+  color: var(--text-hint);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: var(--gray-100);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.header-back:active { background: var(--gray-200); }
+
+/* Sub tab bar (nested tabs) */
+.sub-tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+  background: var(--bg-sub);
+  border-radius: var(--radius) var(--radius) 0 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sub-tab-bar::-webkit-scrollbar { display: none; }
+.sub-tab-item {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-hint);
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, border-color 0.15s;
+}
+.sub-tab-item.active {
+  color: var(--green-400);
+  border-bottom-color: var(--green-400);
+  font-weight: 700;
+}
+.sub-tab-panel { display: none; }
+.sub-tab-panel.active { display: block; }
