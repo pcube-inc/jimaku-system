@@ -11,17 +11,31 @@
 .staff-name-input { flex:1; min-height:36px; padding:6px 10px; border:1.5px solid var(--border-md); border-radius:var(--radius); font-size:14px; font-family:var(--font); }
 .staff-toggle { display:flex; align-items:center; gap:4px; font-size:12px; color:var(--text-sub); white-space:nowrap; }
 .staff-del-btn { min-height:36px; min-width:36px; padding:6px 10px; border-radius:var(--radius); border:1.5px solid rgba(226,75,74,0.3); background:var(--red-50); color:var(--red-600); font-size:13px; cursor:pointer; }
-.confirm-row { border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; margin-bottom:8px; }
-.confirm-row-head { font-size:13px; font-weight:700; margin-bottom:8px; }
 .confirm-entry { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
 .confirm-entry select { flex:1; height:36px; font-size:13px; padding:4px 8px; border:1.5px solid var(--border-md); border-radius:var(--radius); }
 .confirm-add-btn { height:36px; padding:0 10px; border-radius:var(--radius); border:1.5px solid var(--green-400); background:var(--green-50); color:var(--green-600); font-size:13px; cursor:pointer; }
 .confirm-del-btn { height:36px; padding:0 10px; border-radius:var(--radius); border:1.5px solid var(--border-md); background:var(--gray-100); color:var(--red-400); font-size:13px; cursor:pointer; }
 .auto-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:1.5px solid var(--amber-400); background:var(--amber-50); color:var(--amber-600); font-size:14px; font-weight:600; cursor:pointer; margin-bottom:8px; }
-.decide-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:none; background:var(--green-400); color:#fff; font-size:15px; font-weight:700; cursor:pointer; margin-top:12px; }
+.decide-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:none; background:var(--green-400); color:#fff; font-size:15px; font-weight:700; cursor:pointer; margin-top:8px; }
+.calendar-sheet-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:1.5px solid #2196F3; background:#E3F2FD; color:#1565C0; font-size:14px; font-weight:600; cursor:pointer; margin-top:8px; }
 .line-send-panel { background:var(--green-50); border:1px solid rgba(29,158,117,0.2); border-radius:var(--radius-lg); padding:14px; margin-top:16px; }
-.conf-list-item { border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; margin-bottom:8px; }
-.conf-list-head { font-size:13px; font-weight:700; margin-bottom:6px; }
+
+/* シフト入力・確定カレンダー共通 */
+.shift-cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.shift-cal-title { font-size:15px; font-weight:700; }
+.shift-cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+.shift-cal-dow { text-align:center; font-size:11px; font-weight:700; color:var(--text-hint); padding:4px 0; }
+.shift-cal-day { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:var(--radius); font-size:13px; cursor:pointer; border:2px solid transparent; user-select:none; }
+.shift-cal-day.empty,.shift-cal-day.no-shift { cursor:default; opacity:.25; border:none; background:none; }
+.shift-cal-day.shift-date { background:var(--gray-50); border-color:var(--border); }
+.shift-cal-day.has-staff { background:var(--green-50); border-color:var(--green-400); color:var(--green-600); font-weight:700; }
+.shift-cal-day.selected-date { background:var(--green-400); color:#fff !important; border-color:var(--green-600); font-weight:700; }
+.shift-cal-day.conf-confirmed { background:var(--green-50); border-color:var(--green-400); color:var(--green-600); }
+.shift-cal-day.conf-selected { background:var(--green-400); color:#fff !important; border-color:var(--green-600); }
+.staff-cnt { font-size:9px; line-height:1.1; margin-top:2px; }
+.conf-detail-box { background:var(--bg-sub); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px; margin-top:12px; }
+.conf-detail-title { font-size:14px; font-weight:700; margin-bottom:10px; color:var(--green-600); }
+.staff-confirmed-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; font-size:13px; }
 
 /* シフト設定カレンダー */
 .setting-cal-nav { display:flex; align-items:center; justify-content:space-between; margin:10px 0; }
@@ -128,24 +142,40 @@
 
         <!-- シフト入力 -->
         <div id="subtab-shift-input" class="sub-tab-panel active">
-          <div class="row mb-12">
-            <select id="conf-year"  class="form-control" onchange="loadConfirmInput()"></select>
-            <select id="conf-month" class="form-control" onchange="loadConfirmInput()"></select>
+          <div class="shift-cal-nav">
+            <button class="cal-nav-btn" onclick="changeInputCalMonth(-1)">‹</button>
+            <span class="shift-cal-title" id="input-cal-title"></span>
+            <button class="cal-nav-btn" onclick="changeInputCalMonth(1)">›</button>
           </div>
-          <button class="auto-btn" onclick="autoGenerate()">🤖 仮作成（希望を元に自動生成）</button>
-          <div id="conf-error"   class="error-msg"></div>
+          <div class="card" style="padding:10px;">
+            <div class="shift-cal-grid" id="input-cal-grid"></div>
+          </div>
+          <div id="input-detail" class="conf-detail-box hidden">
+            <div class="conf-detail-title" id="input-detail-title"></div>
+            <div id="input-entries-wrap"></div>
+            <button class="confirm-add-btn" style="margin-top:8px;" onclick="addInputEntry()">＋ 追加</button>
+          </div>
+          <div id="conf-error"   class="error-msg" style="margin-top:8px;"></div>
           <div id="conf-success" class="success-msg"></div>
-          <div id="confirm-input-list"></div>
+          <button class="auto-btn" style="margin-top:16px;" onclick="autoGenerate()">🤖 仮作成（希望を元に自動生成）</button>
           <button class="decide-btn" id="save-confirm-btn" onclick="saveConfirmed()">✅ 決定（シフト確定へ反映）</button>
+          <button class="calendar-sheet-btn" id="create-cal-btn" onclick="createCalendarSheet()">📅 カレンダーシート作成</button>
         </div>
 
         <!-- シフト確定（管理者閲覧・LINE送信） -->
         <div id="subtab-shift-confirmed" class="sub-tab-panel">
-          <div class="row mb-12">
-            <select id="admin-conf-year"  class="form-control" onchange="loadAdminConfirmed()"></select>
-            <select id="admin-conf-month" class="form-control" onchange="loadAdminConfirmed()"></select>
+          <div class="shift-cal-nav">
+            <button class="cal-nav-btn" onclick="changeAdminConfCalMonth(-1)">‹</button>
+            <span class="shift-cal-title" id="admin-conf-cal-title"></span>
+            <button class="cal-nav-btn" onclick="changeAdminConfCalMonth(1)">›</button>
           </div>
-          <div id="admin-conf-list"></div>
+          <div class="card" style="padding:10px;">
+            <div class="shift-cal-grid" id="admin-conf-cal-grid"></div>
+          </div>
+          <div id="admin-conf-detail" class="conf-detail-box hidden">
+            <div class="conf-detail-title" id="admin-conf-detail-title"></div>
+            <div id="admin-conf-detail-staff"></div>
+          </div>
 
           <div class="line-send-panel">
             <div class="card-title" style="color:var(--green-600);margin-bottom:10px;">📨 LINEグループへ送信</div>
@@ -255,6 +285,18 @@ let excludedDates = [];
 let settingCalYear  = today.getFullYear();
 let settingCalMonth = today.getMonth() + 1;
 
+// シフト入力カレンダー用
+let inputCalYear   = today.getFullYear();
+let inputCalMonth  = today.getMonth() + 1;
+let selectedInputDate = null;
+let inputReqData   = {};
+
+// シフト確定カレンダー用
+let adminConfCalYear   = today.getFullYear();
+let adminConfCalMonth  = today.getMonth() + 1;
+let selectedAdminConfDate = null;
+let adminConfData  = {};
+
 // ---- 認証 ----
 function checkPassword() {
   const pw  = document.getElementById('pw-input').value.trim();
@@ -279,9 +321,9 @@ document.getElementById('pw-input').addEventListener('keydown', function(e){ if(
 function showAdminScreen() {
   document.getElementById('pw-screen').classList.add('hidden');
   document.getElementById('admin-screen').classList.remove('hidden');
-  initAdminSelects();
   loadSettings();
   loadStaff();
+  loadInputCalendar();
 }
 if (sessionStorage.getItem('admin_ok')) showAdminScreen();
 
@@ -291,7 +333,7 @@ function switchTab(name, btn) {
   document.querySelectorAll('#admin-screen .tab-item').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('tab-'+name).classList.add('active');
   btn.classList.add('active');
-  if (name==='shift-mgmt') { loadConfirmInput(); loadAdminConfirmed(); }
+  if (name==='shift-mgmt') { loadInputCalendar(); loadAdminConfirmedCal(); }
   if (name==='staff') loadStaff();
   if (name==='templates') loadTemplates();
 }
@@ -301,32 +343,9 @@ function switchSubTab(name, btn) {
   document.querySelectorAll('.sub-tab-item').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('subtab-'+name).classList.add('active');
   btn.classList.add('active');
-  if (name==='shift-confirmed') loadAdminConfirmed();
+  if (name==='shift-confirmed') loadAdminConfirmedCal();
   if (name==='shift-settings')  loadShiftSettings();
-}
-
-// ---- 初期セレクト ----
-function initAdminSelects() {
-  ['conf-year','admin-conf-year'].forEach(function(id) {
-    const sel = document.getElementById(id);
-    if (!sel) return;
-    sel.innerHTML = '';
-    for (let y = today.getFullYear(); y <= today.getFullYear()+1; y++) {
-      const o = document.createElement('option'); o.value=y; o.textContent=y+'年';
-      if (y===today.getFullYear()) o.selected=true;
-      sel.appendChild(o);
-    }
-  });
-  ['conf-month','admin-conf-month'].forEach(function(id) {
-    const sel = document.getElementById(id);
-    if (!sel) return;
-    sel.innerHTML = '';
-    for (let m = 1; m <= 12; m++) {
-      const o = document.createElement('option'); o.value=m; o.textContent=m+'月';
-      if (m===today.getMonth()+1) o.selected=true;
-      sel.appendChild(o);
-    }
-  });
+  if (name==='shift-input')     loadInputCalendar();
 }
 
 // ---- 基本設定 ----
@@ -378,113 +397,198 @@ function saveSettings() {
   });
 }
 
-// ---- シフト入力（仮作成・確定） ----
-function loadConfirmInput() {
-  const year  = document.getElementById('conf-year').value;
-  const month = document.getElementById('conf-month').value;
+// ---- シフト入力カレンダー ----
+function changeInputCalMonth(delta) {
+  inputCalMonth += delta;
+  if (inputCalMonth > 12) { inputCalMonth=1; inputCalYear++; }
+  if (inputCalMonth < 1)  { inputCalMonth=12; inputCalYear--; }
+  selectedInputDate = null;
+  document.getElementById('input-detail').classList.add('hidden');
+  loadInputCalendar();
+}
+
+function loadInputCalendar() {
+  document.getElementById('input-cal-title').textContent = inputCalYear+'年'+inputCalMonth+'月';
   const cbName = 'cb_conf_'+Date.now();
   window[cbName] = function(res) {
     cleanup(cbName);
-    loadConfirmRequests(year, month, (res.success && res.data) ? res.data : {});
+    const existingConf = (res.success && res.data) ? res.data : {};
+    loadInputRequests(existingConf);
   };
-  jsonp(GAS_URL.admin, { action:'getConfirmedShift', year:year, month:month }, cbName);
+  jsonp(GAS_URL.admin, { action:'getConfirmedShift', year:inputCalYear, month:inputCalMonth }, cbName);
 }
 
-function loadConfirmRequests(year, month, existingConf) {
+function loadInputRequests(existingConf) {
   const cbName = 'cb_cReq_'+Date.now();
   window[cbName] = function(res) {
     cleanup(cbName);
+    inputReqData = (res.success && res.data) ? res.data : {};
     if (!allStaff.length) {
       const cb2 = 'cb_allst_'+Date.now();
       window[cb2] = function(r) {
         cleanup(cb2);
         allStaff = (r.success && r.data) ? r.data.map(function(s){return s.reg_name||s.line_name||'';}).filter(Boolean) : [];
-        renderConfirmInput(year, month, existingConf, (res.success && res.data) ? res.data : {});
+        initConfEntries(existingConf);
+        renderInputCalendar();
       };
       jsonp(GAS_URL.admin, { action:'getStaffList' }, cb2);
     } else {
-      renderConfirmInput(year, month, existingConf, (res.success && res.data) ? res.data : {});
+      initConfEntries(existingConf);
+      renderInputCalendar();
     }
   };
-  jsonp(GAS_URL.admin, { action:'getShiftRequests', year:year, month:month }, cbName);
+  jsonp(GAS_URL.admin, { action:'getShiftRequests', year:inputCalYear, month:inputCalMonth }, cbName);
 }
 
-function renderConfirmInput(year, month, existingConf, reqDataLocal) {
-  const container = document.getElementById('confirm-input-list');
-  container.innerHTML = '';
+function initConfEntries(existingConf) {
   confEntries = {};
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const dates = [];
+  const daysInMonth = new Date(inputCalYear, inputCalMonth, 0).getDate();
   for (let d = 1; d <= daysInMonth; d++) {
-    const dt = new Date(year, month-1, d);
-    if (shiftDays.indexOf(dt.getDay()) >= 0) dates.push(fmtDate(dt));
-  }
-  if (!dates.length) { container.innerHTML='<p class="text-hint text-center">対象日なし</p>'; return; }
-  dates.forEach(function(date) {
-    const existing = existingConf[date] || [];
-    confEntries[date] = existing.length > 0
-      ? existing.map(function(e){ return {name:e.name, type:e.type}; })
-      : [{name:'', type:'業務A'}];
-    const req = reqDataLocal[date];
-    let hint = '';
-    if (req) {
-      const avail = (req.ok||[]).concat(req.maybe||[]);
-      if (avail.length) hint = '<div class="text-sm text-hint mb-8">希望あり: '+avail.map(esc).join('、')+'</div>';
+    const dt = new Date(inputCalYear, inputCalMonth-1, d);
+    const isShift = shiftDays.indexOf(dt.getDay()) >= 0;
+    const key = fmtDate(dt);
+    const isExtra = extraDates.indexOf(key) >= 0;
+    const isExcluded = excludedDates.indexOf(key) >= 0;
+    if ((isShift || isExtra) && !isExcluded) {
+      const existing = existingConf[key] || [];
+      confEntries[key] = existing.length > 0
+        ? existing.map(function(e){ return {name:e.name, type:e.type}; })
+        : [];
     }
-    const row = document.createElement('div');
-    row.className = 'confirm-row'; row.id = 'conf-row-'+date;
-    row.innerHTML = '<div class="confirm-row-head">'+date+hint+'</div>'+
-      '<div class="conf-entries-'+date+'"></div>'+
-      '<button class="confirm-add-btn mt-8" onclick="addConfEntry(\''+date+'\')">＋ 追加</button>';
-    container.appendChild(row);
-    renderConfEntries(date);
-  });
+  }
 }
 
-function renderConfEntries(date) {
-  const wrap = document.querySelector('.conf-entries-'+date);
-  if (!wrap) return;
+function isShiftDate(dt) {
+  const key = fmtDate(dt);
+  const isExtra    = extraDates.indexOf(key) >= 0;
+  const isExcluded = excludedDates.indexOf(key) >= 0;
+  const isBase     = shiftDays.indexOf(dt.getDay()) >= 0;
+  return (isBase || isExtra) && !isExcluded;
+}
+
+function renderInputCalendar() {
+  const grid = document.getElementById('input-cal-grid');
+  grid.innerHTML = '';
+  DOW_LABELS.forEach(function(d) {
+    const c = document.createElement('div'); c.className='shift-cal-dow'; c.textContent=d; grid.appendChild(c);
+  });
+  const firstDow = new Date(inputCalYear, inputCalMonth-1, 1).getDay();
+  const days = new Date(inputCalYear, inputCalMonth, 0).getDate();
+  for (let i=0; i<firstDow; i++) {
+    const b=document.createElement('div'); b.className='shift-cal-day empty'; grid.appendChild(b);
+  }
+  for (let d=1; d<=days; d++) {
+    const dt  = new Date(inputCalYear, inputCalMonth-1, d);
+    const key = fmtDate(dt);
+    const cell = document.createElement('div');
+    if (!isShiftDate(dt)) {
+      cell.className = 'shift-cal-day no-shift';
+      cell.textContent = d;
+    } else {
+      const entries = confEntries[key] || [];
+      const staffCount = entries.filter(function(e){ return e.name; }).length;
+      if (key === selectedInputDate) {
+        cell.className = 'shift-cal-day selected-date';
+      } else if (staffCount > 0) {
+        cell.className = 'shift-cal-day has-staff';
+      } else {
+        cell.className = 'shift-cal-day shift-date';
+      }
+      const numEl = document.createElement('span');
+      numEl.textContent = d;
+      cell.appendChild(numEl);
+      if (staffCount > 0) {
+        const cnt = document.createElement('div');
+        cnt.className = 'staff-cnt';
+        cnt.textContent = staffCount+'名';
+        cell.appendChild(cnt);
+      }
+      cell.addEventListener('click', (function(k){ return function(){ showInputDetail(k); }; })(key));
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function showInputDetail(date) {
+  selectedInputDate = date;
+  renderInputCalendar();
+  const parts = date.split('-');
+  document.getElementById('input-detail-title').textContent =
+    parseInt(parts[1],10)+'月'+parseInt(parts[2],10)+'日 のシフト入力';
+  if (!confEntries[date]) confEntries[date] = [];
+  renderInputEntries(date);
+  const det = document.getElementById('input-detail');
+  det.classList.remove('hidden');
+  det.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function renderInputEntries(date) {
+  const wrap = document.getElementById('input-entries-wrap');
   wrap.innerHTML = '';
+  const req = inputReqData[date];
+  if (req) {
+    const avail = (req.ok||[]).concat(req.maybe||[]);
+    if (avail.length) {
+      const hint = document.createElement('div');
+      hint.className = 'text-sm text-hint mb-8';
+      hint.style.marginBottom = '8px';
+      hint.textContent = '希望あり: '+avail.join('、');
+      wrap.appendChild(hint);
+    }
+  }
   (confEntries[date]||[]).forEach(function(entry, i) {
     const div = document.createElement('div');
     div.className = 'confirm-entry';
     div.innerHTML =
-      '<select onchange="confEntries[\''+date+'\']['+i+'].name=this.value">'+
+      '<select onchange="confEntries[\''+date+'\']['+i+'].name=this.value;renderInputCalendar();">'+
         '<option value="">選択</option>'+
-        allStaff.map(function(n){return '<option value="'+esc(n)+'"'+(entry.name===n?' selected':'')+'>'+esc(n)+'</option>';}).join('')+
+        allStaff.map(function(n){
+          return '<option value="'+esc(n)+'"'+(entry.name===n?' selected':'')+'>'+esc(n)+'</option>';
+        }).join('')+
       '</select>'+
       '<select onchange="confEntries[\''+date+'\']['+i+'].type=this.value">'+
         '<option value="業務A"'+(entry.type==='業務A'?' selected':'')+'>業務A</option>'+
         '<option value="業務B"'+(entry.type==='業務B'?' selected':'')+'>業務B</option>'+
       '</select>'+
-      '<button class="confirm-del-btn" onclick="delConfEntry(\''+date+'\','+i+')">－</button>';
+      '<button class="confirm-del-btn" onclick="delInputEntry(\''+date+'\','+i+')">－</button>';
     wrap.appendChild(div);
   });
 }
 
-function addConfEntry(date) { confEntries[date].push({name:'',type:'業務A'}); renderConfEntries(date); }
-function delConfEntry(date, i) { confEntries[date].splice(i,1); renderConfEntries(date); }
+function addInputEntry() {
+  if (!selectedInputDate) return;
+  if (!confEntries[selectedInputDate]) confEntries[selectedInputDate] = [];
+  confEntries[selectedInputDate].push({name:'', type:'業務A'});
+  renderInputEntries(selectedInputDate);
+  renderInputCalendar();
+}
+
+function delInputEntry(date, i) {
+  confEntries[date].splice(i, 1);
+  renderInputEntries(date);
+  renderInputCalendar();
+}
 
 // 仮作成：シフト希望を元に自動でシフトを生成
 function autoGenerate() {
-  const year  = document.getElementById('conf-year').value;
-  const month = document.getElementById('conf-month').value;
   const cbName = 'cb_auto_'+Date.now();
   window[cbName] = function(res) {
     cleanup(cbName);
     const reqData = (res.success && res.data) ? res.data : {};
+    inputReqData = reqData;
     Object.keys(confEntries).forEach(function(date) {
       const d = reqData[date];
       if (!d) return;
       const candidates = (d.ok||[]).concat(d.maybe||[]);
       if (candidates.length > 0) {
-        confEntries[date] = candidates.map(function(name) { return {name:name, type:'業務A'}; });
+        confEntries[date] = candidates.map(function(name){ return {name:name, type:'業務A'}; });
       }
-      renderConfEntries(date);
     });
+    renderInputCalendar();
+    if (selectedInputDate) renderInputEntries(selectedInputDate);
     showToast('仮作成しました。内容を確認・調整してください');
   };
-  jsonp(GAS_URL.admin, { action:'getShiftRequests', year:year, month:month }, cbName);
+  jsonp(GAS_URL.admin, { action:'getShiftRequests', year:inputCalYear, month:inputCalMonth }, cbName);
 }
 
 function saveConfirmed() {
@@ -507,33 +611,96 @@ function saveConfirmed() {
   });
 }
 
-// ---- シフト確定（管理者閲覧） ----
-function loadAdminConfirmed() {
-  const year  = document.getElementById('admin-conf-year').value;
-  const month = document.getElementById('admin-conf-month').value;
+// ---- カレンダーシート作成 ----
+function createCalendarSheet() {
+  const btn = document.getElementById('create-cal-btn');
+  btn.disabled=true; btn.textContent='作成中…';
+  postNoCors(GAS_URL.shift, {
+    action: 'createCalendarSheet',
+    year:   inputCalYear,
+    month:  inputCalMonth
+  }, function() {
+    btn.disabled=false; btn.textContent='📅 カレンダーシート作成';
+    showToast(inputCalYear+'年'+inputCalMonth+'月 のカレンダーシートを作成しました');
+  });
+}
+
+// ---- シフト確定カレンダー ----
+function changeAdminConfCalMonth(delta) {
+  adminConfCalMonth += delta;
+  if (adminConfCalMonth > 12) { adminConfCalMonth=1; adminConfCalYear++; }
+  if (adminConfCalMonth < 1)  { adminConfCalMonth=12; adminConfCalYear--; }
+  selectedAdminConfDate = null;
+  document.getElementById('admin-conf-detail').classList.add('hidden');
+  loadAdminConfirmedCal();
+}
+
+function loadAdminConfirmedCal() {
+  document.getElementById('admin-conf-cal-title').textContent = adminConfCalYear+'年'+adminConfCalMonth+'月';
   const cbName = 'cb_aconf_'+Date.now();
   window[cbName] = function(res) {
     cleanup(cbName);
-    renderAdminConfirmed((res.success && res.data) ? res.data : {});
+    adminConfData = (res.success && res.data) ? res.data : {};
+    renderAdminConfCalendar();
   };
-  jsonp(GAS_URL.admin, { action:'getConfirmedShift', year:year, month:month }, cbName);
+  jsonp(GAS_URL.admin, { action:'getConfirmedShift', year:adminConfCalYear, month:adminConfCalMonth }, cbName);
 }
 
-function renderAdminConfirmed(data) {
-  const list = document.getElementById('admin-conf-list');
-  list.innerHTML = '';
-  const dates = Object.keys(data).sort();
-  if (!dates.length) { list.innerHTML='<p class="text-hint text-center mt-8">確定シフトなし</p>'; return; }
-  dates.forEach(function(date) {
-    const div = document.createElement('div');
-    div.className = 'conf-list-item';
-    let html = '<div class="conf-list-head">'+date+'</div>';
-    html += data[date].map(function(e){
-      return '<span class="chip chip-green">'+esc(e.name)+'</span><span class="text-sm text-hint">（'+esc(e.type||'業務')+'）</span> ';
-    }).join('');
-    div.innerHTML = html;
-    list.appendChild(div);
+function renderAdminConfCalendar() {
+  const grid = document.getElementById('admin-conf-cal-grid');
+  grid.innerHTML = '';
+  DOW_LABELS.forEach(function(d) {
+    const c = document.createElement('div'); c.className='shift-cal-dow'; c.textContent=d; grid.appendChild(c);
   });
+  const firstDow = new Date(adminConfCalYear, adminConfCalMonth-1, 1).getDay();
+  const days = new Date(adminConfCalYear, adminConfCalMonth, 0).getDate();
+  for (let i=0; i<firstDow; i++) {
+    const b=document.createElement('div'); b.className='shift-cal-day empty'; grid.appendChild(b);
+  }
+  for (let d=1; d<=days; d++) {
+    const dt  = new Date(adminConfCalYear, adminConfCalMonth-1, d);
+    const key = fmtDate(dt);
+    const cell = document.createElement('div');
+    const entries = adminConfData[key];
+    if (entries && entries.length > 0) {
+      cell.className = key === selectedAdminConfDate ? 'shift-cal-day conf-selected' : 'shift-cal-day conf-confirmed';
+      const numEl = document.createElement('span');
+      numEl.textContent = d;
+      cell.appendChild(numEl);
+      const cnt = document.createElement('div');
+      cnt.className = 'staff-cnt';
+      cnt.textContent = entries.length+'名';
+      cell.appendChild(cnt);
+      cell.addEventListener('click', (function(k){ return function(){ showAdminConfDetail(k); }; })(key));
+    } else {
+      cell.className = 'shift-cal-day no-shift';
+      cell.textContent = d;
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function showAdminConfDetail(date) {
+  selectedAdminConfDate = date;
+  renderAdminConfCalendar();
+  const parts = date.split('-');
+  document.getElementById('admin-conf-detail-title').textContent =
+    parseInt(parts[1],10)+'月'+parseInt(parts[2],10)+'日 の確定シフト';
+  const staffEl = document.getElementById('admin-conf-detail-staff');
+  const entries = adminConfData[date] || [];
+  if (entries.length) {
+    staffEl.innerHTML = entries.map(function(e) {
+      return '<div class="staff-confirmed-row">'+
+        '<span class="chip chip-green">'+esc(e.name)+'</span>'+
+        '<span class="text-sm text-hint">（'+esc(e.type||'業務')+'）</span>'+
+        '</div>';
+    }).join('');
+  } else {
+    staffEl.innerHTML = '<p class="text-sm text-hint">担当なし</p>';
+  }
+  const det = document.getElementById('admin-conf-detail');
+  det.classList.remove('hidden');
+  det.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
 // LINE送信
@@ -637,16 +804,12 @@ function toggleSettingDay(key) {
   const isExcluded = excludedDates.indexOf(key) >= 0;
   const isExtra    = extraDates.indexOf(key) >= 0;
   if (isExcluded) {
-    // 除外 → 元に戻す
     excludedDates = excludedDates.filter(function(d){ return d !== key; });
   } else if (isExtra) {
-    // 追加 → 元に戻す
     extraDates = extraDates.filter(function(d){ return d !== key; });
   } else if (isBaseDay) {
-    // シフト日 → 除外
     excludedDates.push(key);
   } else {
-    // 非シフト日 → 追加
     extraDates.push(key);
   }
 }
@@ -808,10 +971,20 @@ function cleanup(cbName) {
   document.querySelectorAll('script[src*="'+cbName+'"]').forEach(function(el){el.remove();});
 }
 function postNoCors(url, params, cb) {
-  const form = document.createElement('form');
-  Object.keys(params).forEach(function(k){ const i=document.createElement('input'); i.type='hidden'; i.name=k; i.value=params[k]; form.appendChild(i); });
-  fetch(url, { method:'POST', mode:'no-cors', body:new FormData(form) })
-    .then(function(){ setTimeout(cb,3000); }).catch(function(){ setTimeout(cb,3000); });
+  try {
+    const form = document.createElement('form');
+    Object.keys(params).forEach(function(k){
+      const i=document.createElement('input'); i.type='hidden';
+      i.name=k; i.value=(params[k]==null?'':params[k]);
+      form.appendChild(i);
+    });
+    fetch(url, { method:'POST', mode:'no-cors', body:new FormData(form) })
+      .then(function(){ setTimeout(cb,5000); })
+      .catch(function(){ setTimeout(cb,5000); });
+  } catch(e) {
+    console.error('postNoCors error', e);
+    setTimeout(cb,1000);
+  }
 }
 function showToast(msg) {
   const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
