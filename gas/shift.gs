@@ -369,8 +369,8 @@ function createCalendarSheet(params) {
 
   if (!dates.length) return { success: false, error: '確定シフトに対象月のデータがありません' };
 
-  // シート名：既存があれば削除して再作成
-  const sheetName = year + '年' + month + '月シフト表';
+  // シート名：既存があれば削除して再作成（形式: YYYY.MM）
+  const sheetName = year + '.' + String(month).padStart(2, '0');
   const existing  = ss.getSheetByName(sheetName);
   if (existing) ss.deleteSheet(existing);
   const calSheet  = ss.insertSheet(sheetName);

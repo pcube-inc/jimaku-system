@@ -29,6 +29,7 @@
 .shift-cal-day.empty,.shift-cal-day.no-shift { cursor:default; opacity:.25; border:none; background:none; }
 .shift-cal-day.shift-date { background:var(--gray-50); border-color:var(--border); }
 .shift-cal-day.has-staff { background:var(--green-50); border-color:var(--green-400); color:var(--green-600); font-weight:700; }
+.shift-cal-day.has-req   { background:var(--amber-50); border-color:var(--amber-400); color:var(--amber-700); font-weight:700; }
 .shift-cal-day.selected-date { background:var(--green-400); color:#fff !important; border-color:var(--green-600); font-weight:700; }
 .shift-cal-day.conf-confirmed { background:var(--green-50); border-color:var(--green-400); color:var(--green-600); }
 .shift-cal-day.conf-selected { background:var(--green-400); color:#fff !important; border-color:var(--green-600); }
@@ -101,11 +102,13 @@
         </div>
         <div class="form-group">
           <label class="form-label">起床確認リマインダーの時刻</label>
-          <input type="time" id="wakeup_reminder_time" class="form-control">
+          <input type="time" id="wakeup_reminder_time" class="form-control" oninput="document.getElementById('wakeup_reminder_time_jp').textContent=fmtTimeJP(this.value)">
+          <span id="wakeup_reminder_time_jp" class="text-sm text-hint" style="display:block;margin-top:4px;"></span>
         </div>
         <div class="form-group">
           <label class="form-label">起床確認の期限</label>
-          <input type="time" id="wakeup_deadline" class="form-control">
+          <input type="time" id="wakeup_deadline" class="form-control" oninput="document.getElementById('wakeup_deadline_jp').textContent=fmtTimeJP(this.value)">
+          <span id="wakeup_deadline_jp" class="text-sm text-hint" style="display:block;margin-top:4px;"></span>
         </div>
 
         <hr class="divider mt-16">
@@ -153,7 +156,6 @@
           <div id="input-detail" class="conf-detail-box hidden">
             <div class="conf-detail-title" id="input-detail-title"></div>
             <div id="input-entries-wrap"></div>
-            <button class="confirm-add-btn" style="margin-top:8px;" onclick="addInputEntry()">＋ 追加</button>
           </div>
           <div id="conf-error"   class="error-msg" style="margin-top:8px;"></div>
           <div id="conf-success" class="success-msg"></div>
@@ -200,7 +202,8 @@
 
           <div class="form-group">
             <label class="form-label">提出期限（日付）</label>
-            <input type="date" id="shift-deadline-date" class="form-control">
+            <input type="date" id="shift-deadline-date" class="form-control" oninput="document.getElementById('shift_deadline_jp').textContent=fmtDateJP(this.value)">
+            <span id="shift_deadline_jp" class="text-sm text-hint" style="display:block;margin-top:4px;"></span>
           </div>
 
           <div class="form-group">
@@ -369,6 +372,8 @@ function loadSettings() {
     setVal('cc_emails',           (d.cc_emails||'').replace(/,/g,'\n'));
     setVal('wakeup_reminder_time', d.wakeup_reminder_time || '07:00');
     setVal('wakeup_deadline',      d.wakeup_deadline  || '08:00');
+    setJPHint('wakeup_reminder_time_jp', fmtTimeJP(d.wakeup_reminder_time || '07:00'));
+    setJPHint('wakeup_deadline_jp',      fmtTimeJP(d.wakeup_deadline      || '08:00'));
     setVal('line_channel_token',  d.line_channel_token || '');
     setVal('line_group_id',       d.line_group_id    || '');
     shiftDays    = (d.shift_days||'1,2,4,5').split(',').map(Number);
@@ -378,6 +383,7 @@ function loadSettings() {
   jsonp(GAS_URL.admin, { action:'getSettings' }, cbName);
 }
 function setVal(id, val) { const el=document.getElementById(id); if(el) el.value=val; }
+function setJPHint(id, text) { const el=document.getElementById(id); if(el) el.textContent=text; }
 
 function saveSettings() {
   const newPw  = document.getElementById('new_password').value;
@@ -497,10 +503,14 @@ function renderInputCalendar() {
     } else {
       const entries = confEntries[key] || [];
       const staffCount = entries.filter(function(e){ return e.name; }).length;
+      const req = inputReqData[key];
+      const reqCount = req ? ((req.ok||[]).length + (req.maybe||[]).length) : 0;
       if (key === selectedInputDate) {
         cell.className = 'shift-cal-day selected-date';
       } else if (staffCount > 0) {
         cell.className = 'shift-cal-day has-staff';
+      } else if (reqCount > 0) {
+        cell.className = 'shift-cal-day has-req';
       } else {
         cell.className = 'shift-cal-day shift-date';
       }
@@ -510,7 +520,12 @@ function renderInputCalendar() {
       if (staffCount > 0) {
         const cnt = document.createElement('div');
         cnt.className = 'staff-cnt';
-        cnt.textContent = staffCount+'名';
+        cnt.textContent = staffCount+'名確';
+        cell.appendChild(cnt);
+      } else if (reqCount > 0) {
+        const cnt = document.createElement('div');
+        cnt.className = 'staff-cnt';
+        cnt.textContent = reqCount+'名希';
         cell.appendChild(cnt);
       }
       cell.addEventListener('click', (function(k){ return function(){ showInputDetail(k); }; })(key));
@@ -523,8 +538,7 @@ function showInputDetail(date) {
   selectedInputDate = date;
   renderInputCalendar();
   const parts = date.split('-');
-  document.getElementById('input-detail-title').textContent =
-    parseInt(parts[1],10)+'月'+parseInt(parts[2],10)+'日 のシフト入力';
+  document.getElementById('input-detail-title').textContent = fmtDateJP(date)+' のシフト希望';
   if (!confEntries[date]) confEntries[date] = [];
   renderInputEntries(date);
   const det = document.getElementById('input-detail');
@@ -535,32 +549,33 @@ function showInputDetail(date) {
 function renderInputEntries(date) {
   const wrap = document.getElementById('input-entries-wrap');
   wrap.innerHTML = '';
-  const req = inputReqData[date];
-  if (req) {
-    const avail = (req.ok||[]).concat(req.maybe||[]);
-    if (avail.length) {
-      const hint = document.createElement('div');
-      hint.className = 'text-sm text-hint mb-8';
-      hint.style.marginBottom = '8px';
-      hint.textContent = '希望あり: '+avail.join('、');
-      wrap.appendChild(hint);
-    }
+  const req = inputReqData[date] || { ok:[], maybe:[], ng:[] };
+  const staff = allStaff.length ? allStaff : (req.ok||[]).concat(req.maybe||[]).concat(req.ng||[]);
+  if (!staff.length) {
+    const p = document.createElement('p');
+    p.className = 'text-sm text-hint';
+    p.style.padding = '4px 0';
+    p.textContent = 'スタッフが登録されていません';
+    wrap.appendChild(p);
+    return;
   }
-  (confEntries[date]||[]).forEach(function(entry, i) {
+  staff.forEach(function(name) {
+    var mark, label, color, bg;
+    if ((req.ok||[]).indexOf(name) >= 0) {
+      mark='○'; label='OK'; color='var(--green-600)'; bg='var(--green-50)';
+    } else if ((req.maybe||[]).indexOf(name) >= 0) {
+      mark='△'; label='応相談'; color='var(--amber-600)'; bg='var(--amber-50)';
+    } else if ((req.ng||[]).indexOf(name) >= 0) {
+      mark='✕'; label='休み'; color='var(--text-hint)'; bg='var(--gray-100)';
+    } else {
+      mark='－'; label='未回答'; color='var(--text-hint)'; bg='var(--gray-50)';
+    }
     const div = document.createElement('div');
-    div.className = 'confirm-entry';
+    div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:4px;border-radius:var(--radius);background:'+bg+';font-size:13px;';
     div.innerHTML =
-      '<select onchange="confEntries[\''+date+'\']['+i+'].name=this.value;renderInputCalendar();">'+
-        '<option value="">選択</option>'+
-        allStaff.map(function(n){
-          return '<option value="'+esc(n)+'"'+(entry.name===n?' selected':'')+'>'+esc(n)+'</option>';
-        }).join('')+
-      '</select>'+
-      '<select onchange="confEntries[\''+date+'\']['+i+'].type=this.value">'+
-        '<option value="業務A"'+(entry.type==='業務A'?' selected':'')+'>業務A</option>'+
-        '<option value="業務B"'+(entry.type==='業務B'?' selected':'')+'>業務B</option>'+
-      '</select>'+
-      '<button class="confirm-del-btn" onclick="delInputEntry(\''+date+'\','+i+')">－</button>';
+      '<span style="font-weight:700;color:'+color+';min-width:18px;text-align:center;">'+mark+'</span>'+
+      '<span style="font-weight:500;flex:1;">'+esc(name)+'</span>'+
+      '<span style="font-size:11px;color:'+color+';font-weight:600;">'+label+'</span>';
     wrap.appendChild(div);
   });
 }
@@ -598,8 +613,7 @@ function autoGenerate() {
         confEntries[date] = [];
         // 本当に全員✕（ngに誰かいる）場合のみ警告
         if (d && (d.ng||[]).length > 0) {
-          const parts = date.split('-');
-          allNgDates.push(parseInt(parts[1],10)+'月'+parseInt(parts[2],10)+'日');
+          allNgDates.push(fmtDateJP(date));
         }
       }
     });
@@ -634,8 +648,7 @@ function renderShiftTypeList() {
     if (!entries) return;
     const namedEntries = entries.filter(function(e){ return e.name; });
     if (!namedEntries.length) return;
-    const parts = date.split('-');
-    const label = parseInt(parts[1],10)+'月'+parseInt(parts[2],10)+'日';
+    const label = fmtDateJP(date);
     namedEntries.forEach(function(entry, rawIdx) {
       // rawIdxは namedEntries 内のインデックスなので、confEntries[date]内の実際のインデックスを探す
       const realIdx = entries.indexOf(entry);
@@ -750,8 +763,7 @@ function showAdminConfDetail(date) {
   selectedAdminConfDate = date;
   renderAdminConfCalendar();
   const parts = date.split('-');
-  document.getElementById('admin-conf-detail-title').textContent =
-    parseInt(parts[1],10)+'月'+parseInt(parts[2],10)+'日 の確定シフト';
+  document.getElementById('admin-conf-detail-title').textContent = fmtDateJP(date)+' の確定シフト';
   const staffEl = document.getElementById('admin-conf-detail-staff');
   const entries = adminConfData[date] || [];
   if (entries.length) {
@@ -784,7 +796,7 @@ function sendLineShiftMessage() {
     }
     const staff = res.data[date];
     const lines = staff.map(function(s){ return s.name+'さん（'+(s.type||'業務')+'）'; });
-    const text = '【シフト連絡】\n'+date+'\n本日の担当は\n'+lines.join('\n')+'\nです。よろしくお願いします。';
+    const text = '【シフト連絡】\n'+fmtDateJP(date)+'\n本日の担当は\n'+lines.join('\n')+'\nです。よろしくお願いします。';
     postNoCors(GAS_URL.shift, { action:'sendLineMessage', text:text }, function() {
       resEl.textContent='📨 LINEに送信しました'; resEl.classList.add('show');
     });
@@ -800,7 +812,8 @@ function loadShiftSettings() {
     if (!res.success) return;
     const d = res.data;
     const dlEl = document.getElementById('shift-deadline-date');
-    if (dlEl) dlEl.value = d.shift_deadline || '';
+    if (dlEl) { dlEl.value = d.shift_deadline || ''; }
+    setJPHint('shift_deadline_jp', d.shift_deadline ? fmtDateJP(d.shift_deadline) : '');
     shiftDays    = (d.shift_days||'1,2,4,5').split(',').map(Number);
     extraDates   = (d.shift_extra_dates||'').split(',').filter(Boolean);
     excludedDates = (d.shift_excluded_dates||'').split(',').filter(Boolean);
@@ -1026,6 +1039,18 @@ function saveTemplates() {
 // ---- ユーティリティ ----
 function fmtDate(dt) {
   return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+}
+// "YYYY-MM-DD" → "YYYY年M月D日"
+function fmtDateJP(s) {
+  const p = String(s||'').split('-');
+  if (p.length < 3) return s;
+  return parseInt(p[0],10)+'年'+parseInt(p[1],10)+'月'+parseInt(p[2],10)+'日';
+}
+// "HH:MM" → "H時M分"
+function fmtTimeJP(s) {
+  const p = String(s||'').split(':');
+  if (p.length < 2) return s;
+  return parseInt(p[0],10)+'時'+parseInt(p[1],10)+'分';
 }
 function jsonp(url, params, cbName) {
   const qs = Object.keys(params).map(function(k){ return encodeURIComponent(k)+'='+encodeURIComponent(params[k]); }).join('&');
