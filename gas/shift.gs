@@ -39,7 +39,8 @@ function doPost(e) {
     else if (action === 'addStaff')        result = addStaff(e.parameter);
     else if (action === 'deleteStaff')     result = deleteStaff(e.parameter);
     else if (action === 'registerLineId')  result = registerLineId(e.parameter);
-    else if (action === 'sendLineMessage') result = sendLineMessageAction(e.parameter);
+    else if (action === 'sendLineMessage')    result = sendLineMessageAction(e.parameter);
+    else if (action === 'createCalendarSheet') result = createCalendarSheet(e.parameter);
     else result = { success: false, error: 'unknown action' };
   } catch(err) {
     result = { success: false, error: err.message };
@@ -333,4 +334,88 @@ function sendLineMessage(to, text, token) {
   };
   const res = UrlFetchApp.fetch('https://api.line.me/v2/bot/message/push', options);
   Logger.log('LINE API: '+res.getResponseCode()+' '+res.getContentText());
+}
+
+/**
+ * createCalendarSheet()
+ * 確定シフトをもとに「YYYY年M月シフト表」シートを作成する
+ * 行=日付、列=スタッフ名、セル=業務種別
+ */
+function createCalendarSheet(params) {
+  const year  = parseInt(params.year,  10);
+  const month = parseInt(params.month, 10);
+  const ss = openSS();
+
+  // 確定シフトから対象月のデータを収集
+  const confSheet = getSheet('確定シフト');
+  const confRows  = confSheet.getDataRange().getValues();
+  const prefix    = year + '-' + String(month).padStart(2, '0');
+  const byDate    = {};  // { 'YYYY-MM-DD': [{name, type}] }
+  const staffSet  = [];
+
+  for (let i = 1; i < confRows.length; i++) {
+    const d    = dateStr(confRows[i][0]);
+    if (d.indexOf(prefix) !== 0) continue;
+    const name = String(confRows[i][1] || '').trim();
+    const type = String(confRows[i][2] || '').trim();
+    if (!name) continue;
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push({ name: name, type: type });
+    if (staffSet.indexOf(name) < 0) staffSet.push(name);
+  }
+
+  const dates     = Object.keys(byDate).sort();
+  const staffList = staffSet; // 登録順を維持（並び替えしない）
+
+  if (!dates.length) return { success: false, error: '確定シフトに対象月のデータがありません' };
+
+  // シート名：既存があれば削除して再作成
+  const sheetName = year + '年' + month + '月シフト表';
+  const existing  = ss.getSheetByName(sheetName);
+  if (existing) ss.deleteSheet(existing);
+  const calSheet  = ss.insertSheet(sheetName);
+
+  // ヘッダー行：「日付」＋スタッフ名
+  const headers = ['日付'].concat(staffList);
+  calSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+  // データ行：日付ごとにスタッフ列へ業務種別を記入
+  const rows = dates.map(function(date) {
+    const parts = date.split('-');
+    const label = parseInt(parts[1], 10) + '/' + parseInt(parts[2], 10);
+    const row   = [label];
+    staffList.forEach(function(name) {
+      const entry = (byDate[date] || []).filter(function(e){ return e.name === name; })[0];
+      row.push(entry ? entry.type : '');
+    });
+    return row;
+  });
+  calSheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+
+  // 書式設定
+  const headerRange = calSheet.getRange(1, 1, 1, headers.length);
+  headerRange.setFontWeight('bold')
+             .setBackground('#388E3C')
+             .setFontColor('#ffffff')
+             .setHorizontalAlignment('center');
+  // スタッフ列（B以降）のデータセルをセンタリング
+  if (rows.length > 0 && staffList.length > 0) {
+    calSheet.getRange(2, 2, rows.length, staffList.length).setHorizontalAlignment('center');
+  }
+  // 業務Aをライトグリーン、業務Bをライトブルーで色分け
+  for (let r = 0; r < rows.length; r++) {
+    for (let c = 0; c < staffList.length; c++) {
+      const val = rows[r][c + 1];
+      if (val === '業務A') {
+        calSheet.getRange(r + 2, c + 2).setBackground('#E8F5E9');
+      } else if (val === '業務B') {
+        calSheet.getRange(r + 2, c + 2).setBackground('#E3F2FD');
+      }
+    }
+  }
+  calSheet.setFrozenRows(1);
+  calSheet.autoResizeColumns(1, headers.length);
+
+  Logger.log('カレンダーシート作成完了: ' + sheetName);
+  return { success: true, sheetName: sheetName };
 }
