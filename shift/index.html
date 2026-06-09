@@ -384,7 +384,7 @@ function submitShift() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>送信中…';
   const entries = Object.keys(selections).map(function(k) { return {date:k, type:selections[k]}; });
-  postNoCors(GAS_URL.shift, { action:'submitShift', name:name, entries:JSON.stringify(entries) }, function() {
+  postNoCors(GAS_URL.shift, { action:'submitShift', name:name, year:String(curYear), month:String(curMonth), entries:JSON.stringify(entries) }, function() {
     btn.disabled = false; btn.textContent = '送信する';
     showToast('送信しました。修正する場合はもう一度送信できます。');
     // 送信後に再読み込みして保存内容を表示

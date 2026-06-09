@@ -189,16 +189,26 @@ function submitShift(params) {
   const sheet = getSheet('シフト希望');
   let entries = [];
   try { entries = JSON.parse(params.entries); } catch(e) {}
-  const rows = sheet.getDataRange().getValues();
-  entries.forEach(function(entry) {
-    let found = false;
-    for (let i = 1; i < rows.length; i++) {
-      if (rows[i][1] === name && dateStr(rows[i][2]) === entry.date) {
-        sheet.getRange(i+1,4).setValue(entry.type); rows[i][3] = entry.type; found = true; break;
+
+  // year/month が渡された場合はその人・その月の既存行を全削除してから再挿入
+  // → 再送信しても重複・古いデータが残留しない
+  const year  = params.year  ? parseInt(params.year,  10) : 0;
+  const month = params.month ? parseInt(params.month, 10) : 0;
+  if (year && month && name) {
+    const prefix = year + '-' + String(month).padStart(2, '0');
+    const rows = sheet.getDataRange().getValues();
+    for (let i = rows.length - 1; i >= 1; i--) {
+      if (rows[i][1] === name && String(dateStr(rows[i][2])).indexOf(prefix) === 0) {
+        sheet.deleteRow(i + 1);
       }
     }
-    if (!found) sheet.appendRow([new Date(), name, entry.date, entry.type]);
+  }
+
+  // 新しいエントリを追記
+  entries.forEach(function(entry) {
+    sheet.appendRow([new Date(), name, entry.date, entry.type]);
   });
+
   return { success: true };
 }
 
