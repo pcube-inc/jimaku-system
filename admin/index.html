@@ -101,12 +101,12 @@
           <textarea id="cc_emails" class="form-control" rows="3" placeholder="cc1@example.com&#10;cc2@example.com"></textarea>
         </div>
         <div class="form-group">
-          <label class="form-label">起床確認の期限時刻</label>
-          <input type="time" id="wakeup_deadline" class="form-control">
+          <label class="form-label">起床確認リマインダーの時刻</label>
+          <input type="time" id="wakeup_reminder_time" class="form-control">
         </div>
         <div class="form-group">
-          <label class="form-label">LINE定型文の送信時刻</label>
-          <input type="time" id="line_notify_time" class="form-control">
+          <label class="form-label">起床確認の期限</label>
+          <input type="time" id="wakeup_deadline" class="form-control">
         </div>
 
         <hr class="divider mt-16">
@@ -254,8 +254,12 @@
         <p class="text-sm text-hint mb-12">使用可能な変数：<code>{name}</code>（スタッフ名）、<code>{time}</code>（時刻）、<code>{date}</code>（日付）、<code>{deadline}</code>（期限）</p>
 
         <div class="form-group">
-          <label class="form-label">🌅 起床確認リマインダー（LINEグループ送信用）</label>
+          <label class="form-label">🌅 起床確認リマインダー</label>
           <textarea id="template_wakeup" class="form-control" rows="4" placeholder="例：本日出勤の {name} さん、起床確認をお願いします。期限：{deadline}"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">🔔 起床未確認メール</label>
+          <textarea id="template_wakeup_unconfirmed" class="form-control" rows="3" placeholder="例：{name}さんの起床確認ボタンが押されていません"></textarea>
         </div>
         <div class="form-group">
           <label class="form-label">🏢 出勤通知（管理者メール件名テンプレート）</label>
@@ -359,8 +363,8 @@ function loadSettings() {
     const d = res.data;
     setVal('admin_email',         d.admin_email      || '');
     setVal('cc_emails',           (d.cc_emails||'').replace(/,/g,'\n'));
-    setVal('wakeup_deadline',     d.wakeup_deadline  || '08:00');
-    setVal('line_notify_time',    d.line_notify_time || '07:00');
+    setVal('wakeup_reminder_time', d.wakeup_reminder_time || '07:00');
+    setVal('wakeup_deadline',      d.wakeup_deadline  || '08:00');
     setVal('line_channel_token',  d.line_channel_token || '');
     setVal('line_group_id',       d.line_group_id    || '');
     shiftDays    = (d.shift_days||'1,2,4,5').split(',').map(Number);
@@ -383,8 +387,8 @@ function saveSettings() {
     action:'updateSettings',
     admin_email:        document.getElementById('admin_email').value,
     cc_emails:          ccRaw,
-    wakeup_deadline:    document.getElementById('wakeup_deadline').value,
-    line_notify_time:   document.getElementById('line_notify_time').value,
+    wakeup_reminder_time: document.getElementById('wakeup_reminder_time').value,
+    wakeup_deadline:      document.getElementById('wakeup_deadline').value,
     line_channel_token: document.getElementById('line_channel_token').value,
     line_group_id:      document.getElementById('line_group_id').value,
   };
@@ -947,7 +951,8 @@ function loadTemplates() {
     cleanup(cbName);
     if (!res.success) return;
     const d = res.data;
-    setVal('template_wakeup',          d.template_wakeup          || '');
+    setVal('template_wakeup',              d.template_wakeup              || '');
+    setVal('template_wakeup_unconfirmed',  d.template_wakeup_unconfirmed  || '');
     setVal('template_attendance_in',   d.template_attendance_in   || '');
     setVal('template_attendance_out',  d.template_attendance_out  || '');
   };
@@ -959,7 +964,8 @@ function saveTemplates() {
   sucEl.classList.remove('show');
   postNoCors(GAS_URL.admin, {
     action:                   'updateSettings',
-    template_wakeup:          document.getElementById('template_wakeup').value,
+    template_wakeup:              document.getElementById('template_wakeup').value,
+    template_wakeup_unconfirmed:  document.getElementById('template_wakeup_unconfirmed').value,
     template_attendance_in:   document.getElementById('template_attendance_in').value,
     template_attendance_out:  document.getElementById('template_attendance_out').value,
   }, function() {

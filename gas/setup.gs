@@ -180,8 +180,8 @@ function setupSheets() {
   });
   const settingSheet = ss.getSheetByName('管理者設定');
   if (settingSheet && settingSheet.getLastRow() <= 1) {
-    [['admin_email','admin@gmail.com'],['cc_emails',''],['wakeup_deadline','08:00'],
-     ['line_notify_time','07:00'],['shift_days','1,2,4,5'],['line_channel_token',''],
+    [['admin_email','admin@gmail.com'],['cc_emails',''],['wakeup_reminder_time','07:00'],
+     ['wakeup_deadline','08:00'],['shift_days','1,2,4,5'],['line_channel_token',''],
      ['line_group_id',''],['admin_password','admin1234']
     ].forEach(function(row){ settingSheet.appendRow(row); });
   }
