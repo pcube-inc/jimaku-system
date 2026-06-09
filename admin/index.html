@@ -18,6 +18,7 @@
 .auto-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:1.5px solid var(--amber-400); background:var(--amber-50); color:var(--amber-600); font-size:14px; font-weight:600; cursor:pointer; margin-bottom:8px; }
 .decide-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:none; background:var(--green-400); color:#fff; font-size:15px; font-weight:700; cursor:pointer; margin-top:8px; }
 .calendar-sheet-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:1.5px solid #2196F3; background:#E3F2FD; color:#1565C0; font-size:14px; font-weight:600; cursor:pointer; margin-top:8px; }
+.line-notify-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:none; background:var(--green-400); color:#fff; font-size:14px; font-weight:600; cursor:pointer; margin-top:8px; }
 .line-send-panel { background:var(--green-50); border:1px solid rgba(29,158,117,0.2); border-radius:var(--radius-lg); padding:14px; margin-top:16px; }
 
 /* シフト入力・確定カレンダー共通 */
@@ -159,7 +160,8 @@
           <div id="conf-success" class="success-msg"></div>
           <button class="auto-btn" style="margin-top:16px;" onclick="autoGenerate()">🤖 仮作成（希望を元に自動生成）</button>
           <button class="decide-btn" id="save-confirm-btn" onclick="saveConfirmed()">✅ 決定（シフト確定へ反映）</button>
-          <button class="calendar-sheet-btn" id="create-cal-btn" onclick="createCalendarSheet()">📅 カレンダーシート作成</button>
+          <button class="calendar-sheet-btn" id="create-cal-btn" onclick="createCalendarSheet()">📋 シート作成（シフト表を作成）</button>
+          <button class="line-notify-btn" id="line-notify-btn" onclick="sendShiftConfirmedNotify()">📨 LINEグループへ通知</button>
         </div>
 
         <!-- シフト確定（管理者閲覧・LINE送信） -->
@@ -622,6 +624,17 @@ function createCalendarSheet() {
   }, function() {
     btn.disabled=false; btn.textContent='📅 カレンダーシート作成';
     showToast(inputCalYear+'年'+inputCalMonth+'月 のカレンダーシートを作成しました');
+  });
+}
+
+// ---- LINEグループへ確定通知 ----
+function sendShiftConfirmedNotify() {
+  const btn = document.getElementById('line-notify-btn');
+  btn.disabled = true; btn.textContent = '送信中…';
+  const text = inputCalYear + '年' + inputCalMonth + '月分のシフトが確定しました。';
+  postNoCors(GAS_URL.admin, { action:'sendLineMessage', text:text }, function() {
+    btn.disabled = false; btn.textContent = '📨 LINEグループへ通知';
+    showToast('LINEに通知しました');
   });
 }
 
