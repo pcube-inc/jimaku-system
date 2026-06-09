@@ -161,7 +161,7 @@
           <div id="conf-success" class="success-msg"></div>
           <div id="all-ng-warn" class="hidden" style="background:var(--amber-50);border:1px solid var(--amber-400);border-radius:var(--radius);padding:10px 12px;font-size:13px;color:var(--amber-600);margin-top:12px;"></div>
           <button class="auto-btn" style="margin-top:8px;" onclick="autoGenerate()">🤖 仮作成（希望を元に自動生成）</button>
-          <button class="calendar-sheet-btn" id="create-cal-btn" onclick="createCalendarSheet()">📋 シート作成（シフト表を作成）</button>
+          <button class="calendar-sheet-btn" id="create-cal-btn" onclick="createCalendarSheet()">📋 シート作成（カレンダー作成）</button>
           <!-- 業務種別確認・編集リスト（仮作成後に表示） -->
           <div id="shift-type-list" class="hidden" style="margin-top:16px;">
             <div class="section-title" style="margin-bottom:8px;font-size:13px;">📋 業務種別の確認・変更</div>
@@ -609,8 +609,8 @@ function autoGenerate() {
         // ○のスタッフのみで仮作成
         confEntries[date] = candidates.map(function(name){ return {name:name, type:'業務A'}; });
       } else {
-        // 候補なし：空エントリで仮作成
-        confEntries[date] = [];
+        // 候補なし：空エントリ1件で仮作成（業務種別リストで手動入力できるようにする）
+        confEntries[date] = [{ name:'', type:'業務A' }];
         // 本当に全員✕（ngに誰かいる）場合のみ警告
         if (d && (d.ng||[]).length > 0) {
           allNgDates.push(fmtDateJP(date));
@@ -639,38 +639,60 @@ function renderShiftTypeList() {
   const container = document.getElementById('shift-type-list');
   if (!wrap || !container) return;
   const dates = Object.keys(confEntries).sort();
-  const hasAny = dates.some(function(d){ return confEntries[d] && confEntries[d].some(function(e){ return e.name; }); });
-  if (!hasAny) { container.classList.add('hidden'); return; }
+  if (!dates.length) { container.classList.add('hidden'); return; }
   container.classList.remove('hidden');
   wrap.innerHTML = '';
   dates.forEach(function(date) {
+    if (!confEntries[date]) confEntries[date] = [{ name:'', type:'業務A' }];
     const entries = confEntries[date];
-    if (!entries) return;
-    const namedEntries = entries.filter(function(e){ return e.name; });
-    if (!namedEntries.length) return;
+    // エントリが空の場合は空行を1件追加
+    if (!entries.length) entries.push({ name:'', type:'業務A' });
     const label = fmtDateJP(date);
-    namedEntries.forEach(function(entry, rawIdx) {
-      // rawIdxは namedEntries 内のインデックスなので、confEntries[date]内の実際のインデックスを探す
-      const realIdx = entries.indexOf(entry);
+    entries.forEach(function(entry, idx) {
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:'+(rawIdx%2===0?'#fff':'var(--gray-50)')+';';
+      row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:7px 12px;border-bottom:1px solid var(--border);background:'+(idx%2===0?'#fff':'var(--gray-50)')+';';
+      // 名前ドロップダウン（全スタッフから選択可）
       const nameOptions = allStaff.map(function(n){
         return '<option value="'+esc(n)+'"'+(entry.name===n?' selected':'')+'>'+esc(n)+'</option>';
       }).join('');
+      // 最終行にのみ＋ボタン、それ以外は－ボタン
+      const actionBtn = (idx === entries.length - 1)
+        ? '<button style="min-width:28px;height:28px;border-radius:var(--radius);border:1px solid var(--green-400);background:var(--green-50);color:var(--green-600);font-size:15px;cursor:pointer;line-height:1;" '
+          + 'onclick="addShiftTypeEntry(\''+date+'\')">＋</button>'
+        : '<button style="min-width:28px;height:28px;border-radius:var(--radius);border:1px solid var(--border-md);background:var(--gray-100);color:var(--red-400);font-size:15px;cursor:pointer;line-height:1;" '
+          + 'onclick="delShiftTypeEntry(\''+date+'\','+idx+')">－</button>';
       row.innerHTML =
-        '<span style="min-width:72px;font-size:13px;color:var(--text-sub);">'+label+'</span>'+
-        '<select style="flex:1;font-size:13px;padding:3px 6px;border:1.5px solid var(--border-md);border-radius:var(--radius);margin-right:6px;" '+
-          'onchange="confEntries[\''+date+'\']['+realIdx+'].name=this.value;renderInputCalendar();">'+
-          '<option value="">選択</option>'+nameOptions+
+        '<span style="min-width:80px;font-size:13px;color:var(--text-sub);">'+(idx===0?label:'')+'</span>'+
+        '<select style="flex:1;font-size:13px;padding:3px 6px;border:1.5px solid var(--border-md);border-radius:var(--radius);" '+
+          'onchange="confEntries[\''+date+'\']['+idx+'].name=this.value;renderInputCalendar();">'+
+          '<option value="">担当者選択</option>'+nameOptions+
         '</select>'+
-        '<select style="width:88px;font-size:13px;padding:3px 6px;border:1.5px solid var(--border-md);border-radius:var(--radius);" '+
-          'onchange="confEntries[\''+date+'\']['+realIdx+'].type=this.value;">'+
+        '<select style="width:88px;font-size:13px;padding:3px 6px;border:1.5px solid var(--border-md);border-radius:var(--radius);margin-right:4px;" '+
+          'onchange="confEntries[\''+date+'\']['+idx+'].type=this.value;">'+
           '<option value="業務A"'+(entry.type==='業務A'?' selected':'')+'>業務A</option>'+
           '<option value="業務B"'+(entry.type==='業務B'?' selected':'')+'>業務B</option>'+
-        '</select>';
+        '</select>'+
+        actionBtn;
       wrap.appendChild(row);
     });
   });
+}
+
+function addShiftTypeEntry(date) {
+  if (!confEntries[date]) confEntries[date] = [];
+  confEntries[date].push({ name:'', type:'業務A' });
+  renderShiftTypeList();
+  renderInputCalendar();
+}
+
+function delShiftTypeEntry(date, idx) {
+  if (!confEntries[date] || confEntries[date].length <= 1) {
+    confEntries[date] = [{ name:'', type:'業務A' }];
+  } else {
+    confEntries[date].splice(idx, 1);
+  }
+  renderShiftTypeList();
+  renderInputCalendar();
 }
 
 function saveConfirmed() {
@@ -704,7 +726,7 @@ function createCalendarSheet() {
     year:   inputCalYear,
     month:  inputCalMonth
   }, function() {
-    btn.disabled=false; btn.textContent='📅 カレンダーシート作成';
+    btn.disabled=false; btn.textContent='📋 シート作成（カレンダー作成）';
     showToast(inputCalYear+'年'+inputCalMonth+'月 のカレンダーシートを作成しました');
   });
 }

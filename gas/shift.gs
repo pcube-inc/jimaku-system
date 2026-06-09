@@ -151,7 +151,7 @@ function getConfirmedShift(params) {
   const rows  = sheet.getDataRange().getValues();
   const byDate = {};
   for (let i = 1; i < rows.length; i++) {
-    const date  = rows[i][0];
+    const date  = dateStr(rows[i][0]);
     const parts = date.split('-');
     if (parseInt(parts[0],10) !== year || parseInt(parts[1],10) !== month) continue;
     if (!byDate[date]) byDate[date] = [];
@@ -206,11 +206,13 @@ function confirmShift(params) {
   const sheet = getSheet('確定シフト');
   let entries = [];
   try { entries = JSON.parse(params.entries); } catch(e) {}
+  // 名前が空のエントリは書き込まない
+  entries = entries.filter(function(e){ return e.name && String(e.name).trim(); });
   entries.forEach(function(entry) {
     const rows = sheet.getDataRange().getValues();
     let found = false;
     for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] === entry.date && rows[i][1] === entry.name) {
+      if (dateStr(rows[i][0]) === entry.date && rows[i][1] === entry.name) {
         sheet.getRange(i+1,3).setValue(entry.type); sheet.getRange(i+1,4).setValue(true); found = true; break;
       }
     }
@@ -373,7 +375,18 @@ function createCalendarSheet(params) {
   const sheetName = year + '.' + String(month).padStart(2, '0');
   const existing  = ss.getSheetByName(sheetName);
   if (existing) ss.deleteSheet(existing);
-  const calSheet  = ss.insertSheet(sheetName);
+
+  // 「Shift」テンプレートシートをコピー、なければ新規作成
+  let calSheet;
+  const template = ss.getSheetByName('Shift');
+  if (template) {
+    calSheet = template.copyTo(ss);
+    calSheet.setName(sheetName);
+    calSheet.clearContents();
+    calSheet.clearFormats();
+  } else {
+    calSheet = ss.insertSheet(sheetName);
+  }
 
   // ヘッダー行：「日付」＋スタッフ名
   const headers = ['日付'].concat(staffList);
