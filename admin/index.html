@@ -425,7 +425,7 @@ function loadInputCalendar() {
     const existingConf = (res.success && res.data) ? res.data : {};
     loadInputRequests(existingConf);
   };
-  jsonp(GAS_URL.admin, { action:'getConfirmedShift', year:inputCalYear, month:inputCalMonth }, cbName);
+  jsonp(GAS_URL.shift, { action:'getConfirmedShift', year:inputCalYear, month:inputCalMonth }, cbName);
 }
 
 function loadInputRequests(existingConf) {
@@ -447,7 +447,7 @@ function loadInputRequests(existingConf) {
       renderInputCalendar();
     }
   };
-  jsonp(GAS_URL.admin, { action:'getShiftRequests', year:inputCalYear, month:inputCalMonth }, cbName);
+  jsonp(GAS_URL.shift, { action:'getShiftRequests', year:inputCalYear, month:inputCalMonth }, cbName);
 }
 
 function initConfEntries(existingConf) {
@@ -616,7 +616,7 @@ function autoGenerate() {
     renderShiftTypeList();
     showToast('仮作成しました。業務種別を確認して「決定」を押してください');
   };
-  jsonp(GAS_URL.admin, { action:'getShiftRequests', year:inputCalYear, month:inputCalMonth }, cbName);
+  jsonp(GAS_URL.shift, { action:'getShiftRequests', year:inputCalYear, month:inputCalMonth }, cbName);
 }
 
 // 業務種別確認・編集リストを描画（仮作成後に全日程分を一覧表示）
@@ -668,7 +668,7 @@ function saveConfirmed() {
   const btn = document.getElementById('save-confirm-btn');
   btn.disabled=true; btn.textContent='保存中…';
   document.getElementById('conf-error').classList.remove('show');
-  postNoCors(GAS_URL.admin, { action:'confirmShift', entries:JSON.stringify(entries) }, function() {
+  postNoCors(GAS_URL.shift, { action:'confirmShift', entries:JSON.stringify(entries) }, function() {
     btn.disabled=false; btn.textContent='✅ 決定（シフト確定へ反映）';
     const s = document.getElementById('conf-success');
     s.textContent='シフトを確定しました'; s.classList.add('show');
@@ -709,7 +709,7 @@ function loadAdminConfirmedCal() {
     adminConfData = (res.success && res.data) ? res.data : {};
     renderAdminConfCalendar();
   };
-  jsonp(GAS_URL.admin, { action:'getConfirmedShift', year:adminConfCalYear, month:adminConfCalMonth }, cbName);
+  jsonp(GAS_URL.shift, { action:'getConfirmedShift', year:adminConfCalYear, month:adminConfCalMonth }, cbName);
 }
 
 function renderAdminConfCalendar() {
@@ -785,11 +785,11 @@ function sendLineShiftMessage() {
     const staff = res.data[date];
     const lines = staff.map(function(s){ return s.name+'さん（'+(s.type||'業務')+'）'; });
     const text = '【シフト連絡】\n'+date+'\n本日の担当は\n'+lines.join('\n')+'\nです。よろしくお願いします。';
-    postNoCors(GAS_URL.admin, { action:'sendLineMessage', text:text }, function() {
+    postNoCors(GAS_URL.shift, { action:'sendLineMessage', text:text }, function() {
       resEl.textContent='📨 LINEに送信しました'; resEl.classList.add('show');
     });
   };
-  jsonp(GAS_URL.admin, { action:'getConfirmedShift', year:parts[0], month:parseInt(parts[1],10) }, cbName);
+  jsonp(GAS_URL.shift, { action:'getConfirmedShift', year:parts[0], month:parseInt(parts[1],10) }, cbName);
 }
 
 // ---- シフト設定 ----
