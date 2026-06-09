@@ -159,8 +159,13 @@
           <div id="conf-success" class="success-msg"></div>
           <div id="all-ng-warn" class="hidden" style="background:var(--amber-50);border:1px solid var(--amber-400);border-radius:var(--radius);padding:10px 12px;font-size:13px;color:var(--amber-600);margin-top:12px;"></div>
           <button class="auto-btn" style="margin-top:8px;" onclick="autoGenerate()">🤖 仮作成（希望を元に自動生成）</button>
-          <button class="decide-btn" id="save-confirm-btn" onclick="saveConfirmed()">✅ 決定（シフト確定へ反映）</button>
           <button class="calendar-sheet-btn" id="create-cal-btn" onclick="createCalendarSheet()">📋 シート作成（シフト表を作成）</button>
+          <!-- 業務種別確認・編集リスト（仮作成後に表示） -->
+          <div id="shift-type-list" class="hidden" style="margin-top:16px;">
+            <div class="section-title" style="margin-bottom:8px;font-size:13px;">📋 業務種別の確認・変更</div>
+            <div id="shift-type-list-body" style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;"></div>
+          </div>
+          <button class="decide-btn" id="save-confirm-btn" onclick="saveConfirmed()" style="margin-top:16px;">✅ 決定（シフト確定へ反映）</button>
         </div>
 
         <!-- シフト確定（管理者閲覧・LINE送信） -->
@@ -574,7 +579,7 @@ function delInputEntry(date, i) {
   renderInputCalendar();
 }
 
-// 仮作成：シフト希望を元に自動でシフトを生成（○・△を含める。全員✕の日も仮作成し警告表示）
+// 仮作成：○・△を含めて自動生成。本当に全員✕（ngのみ）の日だけ警告表示
 function autoGenerate() {
   const cbName = 'cb_auto_'+Date.now();
   window[cbName] = function(res) {
@@ -586,12 +591,16 @@ function autoGenerate() {
       const d = reqData[date];
       const candidates = d ? (d.ok||[]).concat(d.maybe||[]) : [];
       if (candidates.length > 0) {
+        // ○・△のスタッフで仮作成
         confEntries[date] = candidates.map(function(name){ return {name:name, type:'業務A'}; });
       } else {
-        // 全員✕または未回答：空エントリで仮作成（担当なし）
+        // 候補なし：空エントリで仮作成
         confEntries[date] = [];
-        const parts = date.split('-');
-        allNgDates.push(parseInt(parts[1],10)+'月'+parseInt(parts[2],10)+'日');
+        // 本当に全員✕（ngに誰かいる）場合のみ警告
+        if (d && (d.ng||[]).length > 0) {
+          const parts = date.split('-');
+          allNgDates.push(parseInt(parts[1],10)+'月'+parseInt(parts[2],10)+'日');
+        }
       }
     });
     // 全員✕の日を警告エリアに表示
@@ -604,9 +613,45 @@ function autoGenerate() {
     }
     renderInputCalendar();
     if (selectedInputDate) renderInputEntries(selectedInputDate);
-    showToast('仮作成しました。内容を確認・調整してください');
+    renderShiftTypeList();
+    showToast('仮作成しました。業務種別を確認して「決定」を押してください');
   };
   jsonp(GAS_URL.admin, { action:'getShiftRequests', year:inputCalYear, month:inputCalMonth }, cbName);
+}
+
+// 業務種別確認・編集リストを描画（仮作成後に全日程分を一覧表示）
+function renderShiftTypeList() {
+  const wrap      = document.getElementById('shift-type-list-body');
+  const container = document.getElementById('shift-type-list');
+  if (!wrap || !container) return;
+  const dates = Object.keys(confEntries).sort();
+  const hasAny = dates.some(function(d){ return confEntries[d] && confEntries[d].some(function(e){ return e.name; }); });
+  if (!hasAny) { container.classList.add('hidden'); return; }
+  container.classList.remove('hidden');
+  wrap.innerHTML = '';
+  dates.forEach(function(date) {
+    const entries = confEntries[date];
+    if (!entries) return;
+    const namedEntries = entries.filter(function(e){ return e.name; });
+    if (!namedEntries.length) return;
+    const parts = date.split('-');
+    const label = parseInt(parts[1],10)+'月'+parseInt(parts[2],10)+'日';
+    namedEntries.forEach(function(entry, rawIdx) {
+      // rawIdxは namedEntries 内のインデックスなので、confEntries[date]内の実際のインデックスを探す
+      const realIdx = entries.indexOf(entry);
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:'+(rawIdx%2===0?'#fff':'var(--gray-50)')+';';
+      row.innerHTML =
+        '<span style="min-width:72px;font-size:13px;color:var(--text-sub);">'+label+'</span>'+
+        '<span style="flex:1;font-size:13px;font-weight:500;">'+esc(entry.name)+'</span>'+
+        '<select style="width:88px;font-size:13px;padding:3px 6px;border:1.5px solid var(--border-md);border-radius:var(--radius);" '+
+          'onchange="confEntries[\''+date+'\']['+realIdx+'].type=this.value;">'+
+          '<option value="業務A"'+(entry.type==='業務A'?' selected':'')+'>業務A</option>'+
+          '<option value="業務B"'+(entry.type==='業務B'?' selected':'')+'>業務B</option>'+
+        '</select>';
+      wrap.appendChild(row);
+    });
+  });
 }
 
 function saveConfirmed() {
