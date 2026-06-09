@@ -340,8 +340,20 @@ function sendLineMessage(to, text, token) {
 
 /**
  * createCalendarSheet()
- * シフト確定をもとに「YYYY年M月シフト表」シートを作成する
- * 行=日付、列=スタッフ名、セル=業務種別
+ * 「Shift」テンプレートをコピーし、シフト確定データをカレンダー形式で書き込む
+ *
+ * Shiftシートレイアウト:
+ *   T1   : 対象月の初日（例: 2026/06/01）
+ *   行3  : 日付 1〜15（D〜R列）
+ *   行4  : 曜日
+ *   行6〜: スタッフ名（A列）、業務種別（D〜R列）← 第1セクション（1〜15日）
+ *   行18 : 日付 16〜末日（D〜S列）
+ *   行19 : 曜日
+ *   行21〜: スタッフ名（A列）、業務種別（D〜S列）← 第2セクション（16〜末日）
+ *
+ * 列マッピング:
+ *   第1セクション: 列番号 = 日数 + 3  (day1 → D=4, day15 → R=18)
+ *   第2セクション: 列番号 = 日数 - 12 (day16 → D=4, day31 → S=19)
  */
 function createCalendarSheet(params) {
   const year  = parseInt(params.year,  10);
@@ -349,11 +361,12 @@ function createCalendarSheet(params) {
   const ss = openSS();
 
   // シフト確定から対象月のデータを収集
+  // byDate: { 'YYYY-MM-DD': { staffName: businessType } }
   const confSheet = getSheet('シフト確定');
   const confRows  = confSheet.getDataRange().getValues();
   const prefix    = year + '-' + String(month).padStart(2, '0');
-  const byDate    = {};  // { 'YYYY-MM-DD': [{name, type}] }
-  const staffSet  = [];
+  const byDate    = {};
+  const staffList = [];
 
   for (let i = 1; i < confRows.length; i++) {
     const d    = dateStr(confRows[i][0]);
@@ -361,73 +374,64 @@ function createCalendarSheet(params) {
     const name = String(confRows[i][1] || '').trim();
     const type = String(confRows[i][2] || '').trim();
     if (!name) continue;
-    if (!byDate[d]) byDate[d] = [];
-    byDate[d].push({ name: name, type: type });
-    if (staffSet.indexOf(name) < 0) staffSet.push(name);
+    if (!byDate[d]) byDate[d] = {};
+    byDate[d][name] = type;
+    if (staffList.indexOf(name) < 0) staffList.push(name);
   }
 
-  const dates     = Object.keys(byDate).sort();
-  const staffList = staffSet; // 登録順を維持（並び替えしない）
+  if (!staffList.length) return { success: false, error: 'シフト確定に対象月のデータがありません' };
 
-  if (!dates.length) return { success: false, error: 'シフト確定に対象月のデータがありません' };
-
-  // シート名：既存があれば削除して再作成（形式: YYYY.MM）
+  // シート名：YYYY.MM（既存があれば削除して再作成）
   const sheetName = year + '.' + String(month).padStart(2, '0');
   const existing  = ss.getSheetByName(sheetName);
   if (existing) ss.deleteSheet(existing);
 
-  // 「Shift」テンプレートシートをコピー、なければ新規作成
-  let calSheet;
+  // 「Shift」テンプレートをコピー（書式・数式を保持）
   const template = ss.getSheetByName('Shift');
+  let calSheet;
   if (template) {
     calSheet = template.copyTo(ss);
     calSheet.setName(sheetName);
-    calSheet.clearContents();
-    calSheet.clearFormats();
   } else {
     calSheet = ss.insertSheet(sheetName);
   }
 
-  // ヘッダー行：「日付」＋スタッフ名
-  const headers = ['日付'].concat(staffList);
-  calSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  // T1に対象月の初日をセット（テンプレートの数式が自動的に月名・曜日を表示）
+  calSheet.getRange('T1').setValue(new Date(year, month - 1, 1));
 
-  // データ行：日付ごとにスタッフ列へ業務種別を記入
-  const rows = dates.map(function(date) {
-    const parts = date.split('-');
-    const label = parseInt(parts[1], 10) + '/' + parseInt(parts[2], 10);
-    const row   = [label];
-    staffList.forEach(function(name) {
-      const entry = (byDate[date] || []).filter(function(e){ return e.name === name; })[0];
-      row.push(entry ? entry.type : '');
-    });
-    return row;
-  });
-  calSheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+  // スタッフ行のコンテンツをクリア（書式は保持）
+  // 第1セクション: 行6〜17、A〜S列（列1〜19）
+  // 第2セクション: 行21〜32、A〜S列（列1〜19）
+  calSheet.getRange(6,  1, 12, 19).clearContent();
+  calSheet.getRange(21, 1, 12, 19).clearContent();
 
-  // 書式設定
-  const headerRange = calSheet.getRange(1, 1, 1, headers.length);
-  headerRange.setFontWeight('bold')
-             .setBackground('#388E3C')
-             .setFontColor('#ffffff')
-             .setHorizontalAlignment('center');
-  // スタッフ列（B以降）のデータセルをセンタリング
-  if (rows.length > 0 && staffList.length > 0) {
-    calSheet.getRange(2, 2, rows.length, staffList.length).setHorizontalAlignment('center');
-  }
-  // 業務Aをライトグリーン、業務Bをライトブルーで色分け
-  for (let r = 0; r < rows.length; r++) {
-    for (let c = 0; c < staffList.length; c++) {
-      const val = rows[r][c + 1];
-      if (val === '業務A') {
-        calSheet.getRange(r + 2, c + 2).setBackground('#E8F5E9');
-      } else if (val === '業務B') {
-        calSheet.getRange(r + 2, c + 2).setBackground('#E3F2FD');
-      }
+  // 月の日数
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  // スタッフごとに書き込み
+  for (let s = 0; s < staffList.length && s < 12; s++) {
+    const name = staffList[s];
+    const row1 = 6  + s;  // 第1セクション行（1〜15日）
+    const row2 = 21 + s;  // 第2セクション行（16〜末日）
+
+    // スタッフ名をA列に記入
+    calSheet.getRange(row1, 1).setValue(name);
+    calSheet.getRange(row2, 1).setValue(name);
+
+    // 第1セクション：1〜15日 → 列 = day + 3（D=4〜R=18）
+    for (let day = 1; day <= Math.min(15, daysInMonth); day++) {
+      const dateKey = prefix + '-' + String(day).padStart(2, '0');
+      const type    = (byDate[dateKey] && byDate[dateKey][name]) || '';
+      calSheet.getRange(row1, day + 3).setValue(type);
+    }
+
+    // 第2セクション：16〜末日 → 列 = day - 12（D=4〜S=19）
+    for (let day = 16; day <= daysInMonth; day++) {
+      const dateKey = prefix + '-' + String(day).padStart(2, '0');
+      const type    = (byDate[dateKey] && byDate[dateKey][name]) || '';
+      calSheet.getRange(row2, day - 12).setValue(type);
     }
   }
-  calSheet.setFrozenRows(1);
-  calSheet.autoResizeColumns(1, headers.length);
 
   Logger.log('カレンダーシート作成完了: ' + sheetName);
   return { success: true, sheetName: sheetName };
