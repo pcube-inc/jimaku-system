@@ -672,6 +672,7 @@ function renderShiftTypeList() {
           'onchange="confEntries[\''+date+'\']['+idx+'].type=this.value;">'+
           '<option value="業務A"'+(entry.type==='業務A'?' selected':'')+'>業務A</option>'+
           '<option value="業務B"'+(entry.type==='業務B'?' selected':'')+'>業務B</option>'+
+          '<option value="研修"'+(entry.type==='研修'?' selected':'')+'>研修</option>'+
         '</select>'+
         actionBtn;
       wrap.appendChild(row);
@@ -710,7 +711,7 @@ function saveConfirmed() {
   const btn = document.getElementById('save-confirm-btn');
   btn.disabled=true; btn.textContent='保存中…';
   document.getElementById('conf-error').classList.remove('show');
-  postNoCors(GAS_URL.shift, { action:'confirmShift', entries:JSON.stringify(entries) }, function() {
+  postNoCors(GAS_URL.shift, { action:'confirmShift', year:String(inputCalYear), month:String(inputCalMonth), entries:JSON.stringify(entries) }, function() {
     btn.disabled=false; btn.textContent='✅ 決定（シフト確定へ反映）';
     const s = document.getElementById('conf-success');
     s.textContent='シフトを確定しました'; s.classList.add('show');

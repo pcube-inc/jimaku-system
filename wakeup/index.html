@@ -129,6 +129,7 @@ function checkShift(name) {
 function submitWakeup() {
   const name = lockedName || document.getElementById('staff-name').value;
   if (!name) return;
+  if (!window.confirm('起床確認を送信しますか？')) return;
   const btn = document.getElementById('wakeup-btn');
   btn.disabled = true;
   btn.innerHTML = '<span class="wakeup-icon">⏳</span><span>送信中…</span>';

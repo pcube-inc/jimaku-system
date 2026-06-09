@@ -95,6 +95,7 @@ function submitTrouble() {
   errEl.classList.remove('show');
   if (!name)   { errEl.textContent='スタッフ名を選択してください'; errEl.classList.add('show'); return; }
   if (!detail) { errEl.textContent='状況・詳細を入力してください'; errEl.classList.add('show'); return; }
+  if (!window.confirm('管理者へ緊急連絡を送信しますか？')) return;
 
   const btn = document.getElementById('btn-send');
   btn.disabled = true;

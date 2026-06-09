@@ -97,6 +97,8 @@ function submitAttendance(type) {
   errEl.classList.remove('show');
   if (!name) { errEl.textContent='スタッフ名を選択してください'; errEl.classList.add('show'); return; }
 
+  const label = type === 'in' ? '出勤' : '退勤';
+  if (!window.confirm(label+'を記録しますか？')) return;
   const btnIn  = document.getElementById('btn-in');
   const btnOut = document.getElementById('btn-out');
   btnIn.disabled = btnOut.disabled = true;

@@ -208,16 +208,27 @@ function confirmShift(params) {
   try { entries = JSON.parse(params.entries); } catch(e) {}
   // 名前が空のエントリは書き込まない
   entries = entries.filter(function(e){ return e.name && String(e.name).trim(); });
-  entries.forEach(function(entry) {
+
+  // year/month が渡された場合はその月の既存行を全削除してから再挿入
+  // → シフト確定ボタンを押すたびに最新データで上書き（重複・残留を防ぐ）
+  const year  = params.year  ? parseInt(params.year,  10) : 0;
+  const month = params.month ? parseInt(params.month, 10) : 0;
+  if (year && month) {
+    const prefix = year + '-' + String(month).padStart(2, '0');
     const rows = sheet.getDataRange().getValues();
-    let found = false;
-    for (let i = 1; i < rows.length; i++) {
-      if (dateStr(rows[i][0]) === entry.date && rows[i][1] === entry.name) {
-        sheet.getRange(i+1,3).setValue(entry.type); sheet.getRange(i+1,4).setValue(true); found = true; break;
+    // 後ろから削除（行番号ずれ防止）
+    for (let i = rows.length - 1; i >= 1; i--) {
+      if (String(dateStr(rows[i][0])).indexOf(prefix) === 0) {
+        sheet.deleteRow(i + 1);
       }
     }
-    if (!found) sheet.appendRow([entry.date, entry.name, entry.type, true]);
+  }
+
+  // 新しいエントリを追記
+  entries.forEach(function(entry) {
+    sheet.appendRow([entry.date, entry.name, entry.type, true]);
   });
+
   return { success: true };
 }
 
