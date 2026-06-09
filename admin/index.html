@@ -602,7 +602,11 @@ function autoGenerate() {
     const reqData = (res.success && res.data) ? res.data : {};
     inputReqData = reqData;
     const allNgDates = [];
-    Object.keys(confEntries).forEach(function(date) {
+    // シフト希望が提出された日のみ仮作成（希望提出なしの業務日は除外）
+    const reqDates = Object.keys(reqData).sort();
+    // confEntries をリセットしてシフト希望のある日だけ再構築
+    Object.keys(confEntries).forEach(function(d){ delete confEntries[d]; });
+    reqDates.forEach(function(date) {
       const d = reqData[date];
       const candidates = d ? (d.ok||[]) : [];
       if (candidates.length > 0) {
