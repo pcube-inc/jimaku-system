@@ -606,11 +606,11 @@ function autoGenerate() {
     Object.keys(confEntries).sort().forEach(function(date) {
       const d = reqData[date];
       const candidates = d ? (d.ok||[]) : [];
+      // 各業務日は1行（名前1つ・業務1つ）。○の筆頭候補を初期値にセット
       if (candidates.length > 0) {
-        // ○のスタッフのみで仮作成
-        confEntries[date] = candidates.map(function(name){ return {name:name, type:'業務A'}; });
+        confEntries[date] = [{ name: candidates[0], type: '業務A' }];
       } else {
-        // 候補なし：空エントリ1件で仮作成（業務種別リストで手動入力できるようにする）
+        // 候補なし：空エントリ1件で仮作成
         confEntries[date] = [{ name:'', type:'業務A' }];
         // 本当に全員✕（ngに誰かいる）場合のみ警告
         if (d && (d.ng||[]).length > 0) {
