@@ -69,7 +69,22 @@ function todayStr() {
 function staffName(row) {
   return (row[2] && String(row[2]).trim()) ? String(row[2]).trim() : String(row[1]).trim();
 }
-function isEnabled(row) { return row[4] === true || row[4] === 'TRUE'; }
+// 有効フラグ（E列=index4）。空/未設定の旧スタッフは有効とみなす（後方互換）
+function isEnabled(row) {
+  const v = row[4];
+  if (v === false || v === 'FALSE') return false;
+  if (v === null || v === undefined || v === '') return true;
+  return v === true || v === 'TRUE' || v === 'true' || v === 1 || v === '1';
+}
+// 日付値を "YYYY-MM-DD" 文字列に変換（Date オブジェクト・文字列両対応）
+function dateStr(val) {
+  if (val instanceof Date) {
+    return val.getFullYear() + '-' +
+           String(val.getMonth() + 1).padStart(2, '0') + '-' +
+           String(val.getDate()).padStart(2, '0');
+  }
+  return String(val).trim();
+}
 
 // ---- GET ----
 function getStaff() {
@@ -104,7 +119,7 @@ function getMyShift(params) {
   const result = {};
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][1] !== name) continue;
-    const date  = rows[i][2];
+    const date  = dateStr(rows[i][2]);
     const parts = date.split('-');
     if (parseInt(parts[0],10) === year && parseInt(parts[1],10) === month) result[date] = rows[i][3];
   }
@@ -118,7 +133,7 @@ function getShiftRequests(params) {
   const rows  = sheet.getDataRange().getValues();
   const byDate = {};
   for (let i = 1; i < rows.length; i++) {
-    const date  = rows[i][2];
+    const date  = dateStr(rows[i][2]);
     const parts = date.split('-');
     if (parseInt(parts[0],10) !== year || parseInt(parts[1],10) !== month) continue;
     if (!byDate[date]) byDate[date] = { ok:[], maybe:[], ng:[] };
@@ -177,7 +192,7 @@ function submitShift(params) {
   entries.forEach(function(entry) {
     let found = false;
     for (let i = 1; i < rows.length; i++) {
-      if (rows[i][1] === name && rows[i][2] === entry.date) {
+      if (rows[i][1] === name && dateStr(rows[i][2]) === entry.date) {
         sheet.getRange(i+1,4).setValue(entry.type); rows[i][3] = entry.type; found = true; break;
       }
     }

@@ -70,9 +70,12 @@ function getSettingMap() {
 function staffName(row) {
   return (row[2] && String(row[2]).trim()) ? String(row[2]).trim() : String(row[1]).trim();
 }
-// 有効フラグ（E列=index4）
+// 有効フラグ（E列=index4）。空/未設定の旧スタッフは有効とみなす（後方互換）
 function isEnabled(row) {
-  return row[4] === true || row[4] === 'TRUE';
+  const v = row[4];
+  if (v === false || v === 'FALSE') return false;
+  if (v === null || v === undefined || v === '') return true;
+  return v === true || v === 'TRUE' || v === 'true' || v === 1 || v === '1';
 }
 
 // ---- GET アクション ----
