@@ -18,7 +18,6 @@
 .auto-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:1.5px solid var(--amber-400); background:var(--amber-50); color:var(--amber-600); font-size:14px; font-weight:600; cursor:pointer; margin-bottom:8px; }
 .decide-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:none; background:var(--green-400); color:#fff; font-size:15px; font-weight:700; cursor:pointer; margin-top:8px; }
 .calendar-sheet-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:1.5px solid #2196F3; background:#E3F2FD; color:#1565C0; font-size:14px; font-weight:600; cursor:pointer; margin-top:8px; }
-.line-notify-btn { width:100%; min-height:44px; border-radius:var(--radius-pill); border:none; background:var(--green-400); color:#fff; font-size:14px; font-weight:600; cursor:pointer; margin-top:8px; }
 .line-send-panel { background:var(--green-50); border:1px solid rgba(29,158,117,0.2); border-radius:var(--radius-lg); padding:14px; margin-top:16px; }
 
 /* シフト入力・確定カレンダー共通 */
@@ -158,10 +157,10 @@
           </div>
           <div id="conf-error"   class="error-msg" style="margin-top:8px;"></div>
           <div id="conf-success" class="success-msg"></div>
-          <button class="auto-btn" style="margin-top:16px;" onclick="autoGenerate()">🤖 仮作成（希望を元に自動生成）</button>
+          <div id="all-ng-warn" class="hidden" style="background:var(--amber-50);border:1px solid var(--amber-400);border-radius:var(--radius);padding:10px 12px;font-size:13px;color:var(--amber-600);margin-top:12px;"></div>
+          <button class="auto-btn" style="margin-top:8px;" onclick="autoGenerate()">🤖 仮作成（希望を元に自動生成）</button>
           <button class="decide-btn" id="save-confirm-btn" onclick="saveConfirmed()">✅ 決定（シフト確定へ反映）</button>
           <button class="calendar-sheet-btn" id="create-cal-btn" onclick="createCalendarSheet()">📋 シート作成（シフト表を作成）</button>
-          <button class="line-notify-btn" id="line-notify-btn" onclick="sendShiftConfirmedNotify()">📨 LINEグループへ通知</button>
         </div>
 
         <!-- シフト確定（管理者閲覧・LINE送信） -->
@@ -575,21 +574,34 @@ function delInputEntry(date, i) {
   renderInputCalendar();
 }
 
-// 仮作成：シフト希望を元に自動でシフトを生成
+// 仮作成：シフト希望を元に自動でシフトを生成（○・△を含める。全員✕の日も仮作成し警告表示）
 function autoGenerate() {
   const cbName = 'cb_auto_'+Date.now();
   window[cbName] = function(res) {
     cleanup(cbName);
     const reqData = (res.success && res.data) ? res.data : {};
     inputReqData = reqData;
+    const allNgDates = [];
     Object.keys(confEntries).forEach(function(date) {
       const d = reqData[date];
-      if (!d) return;
-      const candidates = (d.ok||[]).concat(d.maybe||[]);
+      const candidates = d ? (d.ok||[]).concat(d.maybe||[]) : [];
       if (candidates.length > 0) {
         confEntries[date] = candidates.map(function(name){ return {name:name, type:'業務A'}; });
+      } else {
+        // 全員✕または未回答：空エントリで仮作成（担当なし）
+        confEntries[date] = [];
+        const parts = date.split('-');
+        allNgDates.push(parseInt(parts[1],10)+'月'+parseInt(parts[2],10)+'日');
       }
     });
+    // 全員✕の日を警告エリアに表示
+    const warnEl = document.getElementById('all-ng-warn');
+    if (allNgDates.length) {
+      warnEl.innerHTML = '⚠️ 全員✕（担当なし）の日：<br><strong>'+allNgDates.join('、')+'</strong>';
+      warnEl.classList.remove('hidden');
+    } else {
+      warnEl.classList.add('hidden');
+    }
     renderInputCalendar();
     if (selectedInputDate) renderInputEntries(selectedInputDate);
     showToast('仮作成しました。内容を確認・調整してください');
@@ -602,9 +614,11 @@ function saveConfirmed() {
   Object.keys(confEntries).forEach(function(date) {
     confEntries[date].forEach(function(e){ if(e.name) entries.push({date:date, name:e.name, type:e.type}); });
   });
-  if (!entries.length) {
+  // スタッフがいなくても確定可（全員✕の日があるケースに対応）
+  // ただし対象日付が1件もない場合はエラー
+  if (!Object.keys(confEntries).length) {
     const errEl = document.getElementById('conf-error');
-    errEl.textContent='スタッフを1人以上選択してください'; errEl.classList.add('show'); return;
+    errEl.textContent='シフト対象日がありません'; errEl.classList.add('show'); return;
   }
   const btn = document.getElementById('save-confirm-btn');
   btn.disabled=true; btn.textContent='保存中…';
@@ -631,16 +645,6 @@ function createCalendarSheet() {
   });
 }
 
-// ---- LINEグループへ確定通知 ----
-function sendShiftConfirmedNotify() {
-  const btn = document.getElementById('line-notify-btn');
-  btn.disabled = true; btn.textContent = '送信中…';
-  const text = inputCalYear + '年' + inputCalMonth + '月分のシフトが確定しました。';
-  postNoCors(GAS_URL.admin, { action:'sendLineMessage', text:text }, function() {
-    btn.disabled = false; btn.textContent = '📨 LINEグループへ通知';
-    showToast('LINEに通知しました');
-  });
-}
 
 // ---- シフト確定カレンダー ----
 function changeAdminConfCalMonth(delta) {
