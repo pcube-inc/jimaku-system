@@ -147,7 +147,7 @@ function getShiftRequests(params) {
 function getConfirmedShift(params) {
   const year  = parseInt(params.year, 10);
   const month = parseInt(params.month, 10);
-  const sheet = getSheet('確定シフト');
+  const sheet = getSheet('シフト確定');
   const rows  = sheet.getDataRange().getValues();
   const byDate = {};
   for (let i = 1; i < rows.length; i++) {
@@ -203,7 +203,7 @@ function submitShift(params) {
 }
 
 function confirmShift(params) {
-  const sheet = getSheet('確定シフト');
+  const sheet = getSheet('シフト確定');
   let entries = [];
   try { entries = JSON.parse(params.entries); } catch(e) {}
   // 名前が空のエントリは書き込まない
@@ -313,7 +313,7 @@ function sendDailyMessage() {
   const groupId = settings['line_group_id'];
   if (!token || !groupId) { Logger.log('LINE設定未設定'); return; }
   const today = todayStr();
-  const sheet = getSheet('確定シフト');
+  const sheet = getSheet('シフト確定');
   const rows  = sheet.getDataRange().getValues();
   const staffToday = [];
   for (let i = 1; i < rows.length; i++) {
@@ -340,7 +340,7 @@ function sendLineMessage(to, text, token) {
 
 /**
  * createCalendarSheet()
- * 確定シフトをもとに「YYYY年M月シフト表」シートを作成する
+ * シフト確定をもとに「YYYY年M月シフト表」シートを作成する
  * 行=日付、列=スタッフ名、セル=業務種別
  */
 function createCalendarSheet(params) {
@@ -348,8 +348,8 @@ function createCalendarSheet(params) {
   const month = parseInt(params.month, 10);
   const ss = openSS();
 
-  // 確定シフトから対象月のデータを収集
-  const confSheet = getSheet('確定シフト');
+  // シフト確定から対象月のデータを収集
+  const confSheet = getSheet('シフト確定');
   const confRows  = confSheet.getDataRange().getValues();
   const prefix    = year + '-' + String(month).padStart(2, '0');
   const byDate    = {};  // { 'YYYY-MM-DD': [{name, type}] }
@@ -369,7 +369,7 @@ function createCalendarSheet(params) {
   const dates     = Object.keys(byDate).sort();
   const staffList = staffSet; // 登録順を維持（並び替えしない）
 
-  if (!dates.length) return { success: false, error: '確定シフトに対象月のデータがありません' };
+  if (!dates.length) return { success: false, error: 'シフト確定に対象月のデータがありません' };
 
   // シート名：既存があれば削除して再作成（形式: YYYY.MM）
   const sheetName = year + '.' + String(month).padStart(2, '0');

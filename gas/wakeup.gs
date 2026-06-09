@@ -103,7 +103,7 @@ function checkTodayShift(params) {
   const today      = todayStr();
   const setting    = getSettingMap();
   const deadline   = timeStr(setting['wakeup_deadline'] || '08:00');
-  const shiftSheet = getSheet('確定シフト');
+  const shiftSheet = getSheet('シフト確定');
   const shiftRows  = shiftSheet.getDataRange().getValues();
   let onShift = false;
   for (let i = 1; i < shiftRows.length; i++) {
@@ -154,7 +154,7 @@ function sendWakeupReminder() {
   if (!token) { Logger.log('line_channel_token 未設定'); return; }
 
   // 当日シフトのスタッフ名リストを取得
-  const shiftSheet = getSheet('確定シフト');
+  const shiftSheet = getSheet('シフト確定');
   const shiftRows  = shiftSheet.getDataRange().getValues();
   const scheduled  = [];
   for (let i = 1; i < shiftRows.length; i++) {
@@ -193,7 +193,7 @@ function checkUnconfirmed() {
   const template   = setting['template_wakeup_unconfirmed'] || '{name}さんの起床確認ボタンが押されていません';
   if (!adminEmail) { Logger.log('admin_email 未設定'); return; }
 
-  const shiftSheet = getSheet('確定シフト');
+  const shiftSheet = getSheet('シフト確定');
   const shiftRows  = shiftSheet.getDataRange().getValues();
   const scheduled  = [];
   for (let i = 1; i < shiftRows.length; i++) { if (shiftRows[i][0] === today) scheduled.push(shiftRows[i][1]); }
