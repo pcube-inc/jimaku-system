@@ -594,7 +594,7 @@ function delInputEntry(date, i) {
   renderInputCalendar();
 }
 
-// 仮作成：○・△を含めて自動生成。本当に全員✕（ngのみ）の日だけ警告表示
+// 仮作成：○のスタッフのみで作成。全員✕（ngのみ）の日だけ警告表示
 function autoGenerate() {
   const cbName = 'cb_auto_'+Date.now();
   window[cbName] = function(res) {
@@ -604,9 +604,9 @@ function autoGenerate() {
     const allNgDates = [];
     Object.keys(confEntries).forEach(function(date) {
       const d = reqData[date];
-      const candidates = d ? (d.ok||[]).concat(d.maybe||[]) : [];
+      const candidates = d ? (d.ok||[]) : [];
       if (candidates.length > 0) {
-        // ○・△のスタッフで仮作成
+        // ○のスタッフのみで仮作成
         confEntries[date] = candidates.map(function(name){ return {name:name, type:'業務A'}; });
       } else {
         // 候補なし：空エントリで仮作成
@@ -654,9 +654,15 @@ function renderShiftTypeList() {
       const realIdx = entries.indexOf(entry);
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:'+(rawIdx%2===0?'#fff':'var(--gray-50)')+';';
+      const nameOptions = allStaff.map(function(n){
+        return '<option value="'+esc(n)+'"'+(entry.name===n?' selected':'')+'>'+esc(n)+'</option>';
+      }).join('');
       row.innerHTML =
         '<span style="min-width:72px;font-size:13px;color:var(--text-sub);">'+label+'</span>'+
-        '<span style="flex:1;font-size:13px;font-weight:500;">'+esc(entry.name)+'</span>'+
+        '<select style="flex:1;font-size:13px;padding:3px 6px;border:1.5px solid var(--border-md);border-radius:var(--radius);margin-right:6px;" '+
+          'onchange="confEntries[\''+date+'\']['+realIdx+'].name=this.value;renderInputCalendar();">'+
+          '<option value="">選択</option>'+nameOptions+
+        '</select>'+
         '<select style="width:88px;font-size:13px;padding:3px 6px;border:1.5px solid var(--border-md);border-radius:var(--radius);" '+
           'onchange="confEntries[\''+date+'\']['+realIdx+'].type=this.value;">'+
           '<option value="業務A"'+(entry.type==='業務A'?' selected':'')+'>業務A</option>'+
