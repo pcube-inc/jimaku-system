@@ -812,11 +812,11 @@ function showAdminConfDetail(date) {
 function sendLineShiftMessage() {
   const resEl = document.getElementById('line-send-result');
   const btn   = document.getElementById('line-send-btn');
-  resEl.classList.remove('show');
+  if (resEl) resEl.classList.remove('show');
   if (btn) { btn.disabled = true; btn.textContent = '送信中…'; }
   postNoCors(GAS_URL.shift, { action:'sendLineMessage', text:'シフトが確定しました' }, function() {
     if (btn) { btn.disabled = false; btn.textContent = '今すぐ送信'; }
-    resEl.textContent='📨 LINEに送信しました'; resEl.classList.add('show');
+    if (resEl) { resEl.textContent='📨 LINEに送信しました'; resEl.classList.add('show'); }
   });
 }
 
