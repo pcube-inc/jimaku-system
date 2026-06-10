@@ -62,6 +62,7 @@ function doPost(e) {
     else if (action === 'deleteStaff')     result = deleteStaff(e.parameter);
     else if (action === 'registerLineId')  result = registerLineId(e.parameter);
     else if (action === 'sendLineMessage')    result = sendLineMessageAction(e.parameter);
+    else if (action === 'cleanupSettings')   result = cleanupSettings();
     else if (action === 'createCalendarSheet') result = createCalendarSheet(e.parameter);
     else result = { success: false, error: 'unknown action' };
   } catch(err) {
@@ -364,9 +365,8 @@ function sendLineBroadcast(text, token) {
  */
 function sendDailyMessage() {
   const settings = getSettingMap();
-  const token   = settings['line_channel_token'];
-  const groupId = settings['line_group_id'];
-  if (!token || !groupId) { Logger.log('LINE設定未設定'); return; }
+  const token = settings['line_channel_token'];
+  if (!token) { Logger.log('LINE設定未設定'); return; }
   const today = todayStr();
   const sheet = getSheet('シフト確定');
   const rows  = sheet.getDataRange().getValues();
@@ -378,7 +378,34 @@ function sendDailyMessage() {
   }
   if (!staffToday.length) return;
   const lines = staffToday.map(function(s){ return s.name+'さん（'+(s.type||'業務')+'）'; });
-  sendLineMessage(groupId, '【本日のシフト】\n本日の担当は\n'+lines.join('\n')+'\nです。\nよろしくお願いします。', token);
+  sendLineBroadcast('【本日のシフト】\n本日の担当は\n'+lines.join('\n')+'\nです。\nよろしくお願いします。', token);
+}
+
+function cleanupSettings() {
+  const sheet = getSheet('管理者設定');
+  const rows  = sheet.getDataRange().getValues();
+
+  // line_group_id 行を削除（後ろから走査）
+  for (let i = rows.length - 1; i >= 1; i--) {
+    if (rows[i][0] === 'line_group_id') {
+      sheet.deleteRow(i + 1);
+    }
+  }
+
+  // 必須キーが存在しない場合はデフォルト値で追加
+  const refreshed = sheet.getDataRange().getValues();
+  const existingKeys = refreshed.slice(1).map(function(r){ return r[0]; });
+  const defaults = {
+    wakeup_reminder_time: '07:00',
+    wakeup_deadline:      '08:00',
+  };
+  Object.keys(defaults).forEach(function(key) {
+    if (existingKeys.indexOf(key) < 0) {
+      sheet.appendRow([key, defaults[key]]);
+    }
+  });
+
+  return { success: true };
 }
 
 function sendLineMessage(to, text, token) {

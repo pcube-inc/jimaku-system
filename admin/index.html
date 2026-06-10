@@ -117,11 +117,6 @@
           <label class="form-label">Channel Access Token</label>
           <input type="text" id="line_channel_token" class="form-control" placeholder="LINE Channel Access Token">
         </div>
-        <div class="form-group">
-          <label class="form-label">Group ID</label>
-          <input type="text" id="line_group_id" class="form-control" placeholder="LINEグループID">
-        </div>
-
         <hr class="divider mt-16">
         <div class="section-title">パスワード変更</div>
         <div class="form-group">
@@ -334,6 +329,10 @@ function showAdminScreen() {
   loadSettings();
   loadStaff();
   loadInputCalendar();
+  callCleanupSettings();
+}
+function callCleanupSettings() {
+  postNoCors(GAS_URL.shift, { action: 'cleanupSettings' }, function() {});
 }
 if (sessionStorage.getItem('admin_ok')) showAdminScreen();
 
@@ -372,7 +371,6 @@ function loadSettings() {
     setJPHint('wakeup_reminder_time_jp', fmtTimeJP(d.wakeup_reminder_time || '07:00'));
     setJPHint('wakeup_deadline_jp',      fmtTimeJP(d.wakeup_deadline      || '08:00'));
     setVal('line_channel_token',  d.line_channel_token || '');
-    setVal('line_group_id',       d.line_group_id    || '');
     shiftDays    = (d.shift_days||'1,2,4,5').split(',').map(Number);
     extraDates   = (d.shift_extra_dates||'').split(',').filter(Boolean);
     excludedDates = (d.shift_excluded_dates||'').split(',').filter(Boolean);
@@ -397,7 +395,6 @@ function saveSettings() {
     wakeup_reminder_time: document.getElementById('wakeup_reminder_time').value,
     wakeup_deadline:      document.getElementById('wakeup_deadline').value,
     line_channel_token: document.getElementById('line_channel_token').value,
-    line_group_id:      document.getElementById('line_group_id').value,
   };
   if (newPw) data.admin_password = newPw;
   const btn = document.getElementById('save-settings-btn');
