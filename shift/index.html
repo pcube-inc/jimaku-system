@@ -123,9 +123,6 @@
 
     <!-- ===== シフト確定（スタッフ閲覧用） ===== -->
     <div id="tab-confirm" class="tab-panel">
-      <!-- 確定済みバナー -->
-      <div id="confirmed-banners" class="sel-chip-area mb-8"></div>
-
       <!-- カレンダーナビ -->
       <div class="cal-nav">
         <button class="cal-nav-btn" id="conf-prev-btn" onclick="changeConfMonth(-1)">‹</button>
@@ -445,30 +442,11 @@ function loadConfirmedView() {
   window[cbName] = function(res) {
     cleanup(cbName);
     confirmedData = (res.success && res.data) ? res.data : {};
-    renderConfirmedBanners();
     renderConfirmedCalendar();
   };
   jsonp(GAS_URL.shift, { action:'getConfirmedShift', year:confViewYear, month:confViewMonth }, cbName);
 }
 
-function renderConfirmedBanners() {
-  const area = document.getElementById('confirmed-banners');
-  area.innerHTML = '';
-  const dates = Object.keys(confirmedData).sort();
-  if (!dates.length) {
-    area.innerHTML = '<p class="text-sm text-hint">確定済みシフトはまだありません</p>';
-    return;
-  }
-  dates.forEach(function(d) {
-    const parts = d.split('-');
-    const chip = document.createElement('span');
-    chip.className = 'chip chip-green';
-    chip.style.cursor = 'pointer';
-    chip.textContent = 'シフト確定（'+parseInt(parts[1])+'月'+parseInt(parts[2])+'日）';
-    chip.addEventListener('click', function() { showConfirmedDetail(d); });
-    area.appendChild(chip);
-  });
-}
 
 function renderConfirmedCalendar() {
   const grid = document.getElementById('conf-cal-grid');

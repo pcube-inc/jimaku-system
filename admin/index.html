@@ -187,9 +187,7 @@
 
           <div class="line-send-panel">
             <div class="card-title" style="color:var(--green-600);margin-bottom:10px;">📨 LINEグループへ送信</div>
-            <div class="form-group" style="margin-bottom:8px;">
-              <input type="date" id="line-send-date" class="form-control" placeholder="送信日">
-            </div>
+            <p class="text-sm text-hint" style="margin-bottom:10px;">「シフトが確定しました」をLINEグループへ通知します。</p>
             <button class="btn btn-primary" style="background:var(--green-400);" onclick="sendLineShiftMessage()">今すぐ送信</button>
             <div id="line-send-result" class="success-msg mt-8"></div>
           </div>
@@ -664,9 +662,9 @@ function renderShiftTypeList() {
           + 'onclick="delShiftTypeEntry(\''+date+'\','+idx+')">－</button>';
       row.innerHTML =
         '<span style="min-width:80px;font-size:13px;color:var(--text-sub);">'+(idx===0?label:'')+'</span>'+
-        '<select style="flex:1;font-size:13px;padding:3px 6px;border:1.5px solid var(--border-md);border-radius:var(--radius);" '+
-          'onchange="confEntries[\''+date+'\']['+idx+'].name=this.value;renderInputCalendar();">'+
-          '<option value="">担当者選択</option>'+nameOptions+
+        '<select style="flex:1;font-size:13px;padding:3px 6px;border:1.5px solid var(--border-md);border-radius:var(--radius);'+(entry.name===''?'background:var(--amber-50);color:var(--amber-600);':'')+'" '+
+          'onchange="confEntries[\''+date+'\']['+idx+'].name=this.value;this.style.background=this.value?\'\':(\'var(--amber-50)\');this.style.color=this.value?\'\':(\'var(--amber-600)\');renderInputCalendar();">'+
+          '<option value="" style="background:var(--amber-50);color:var(--amber-600);">---------------</option>'+nameOptions+
         '</select>'+
         '<select style="width:88px;font-size:13px;padding:3px 6px;border:1.5px solid var(--border-md);border-radius:var(--radius);margin-right:4px;" '+
           'onchange="confEntries[\''+date+'\']['+idx+'].type=this.value;">'+
@@ -813,25 +811,11 @@ function showAdminConfDetail(date) {
 
 // LINE送信
 function sendLineShiftMessage() {
-  const date = document.getElementById('line-send-date').value;
   const resEl = document.getElementById('line-send-result');
   resEl.classList.remove('show');
-  if (!date) { showToast('送信日を選択してください'); return; }
-  const parts = date.split('-');
-  const cbName = 'cb_linesend_'+Date.now();
-  window[cbName] = function(res) {
-    cleanup(cbName);
-    if (!res.success || !res.data || !res.data[date] || !res.data[date].length) {
-      showToast('この日の確定シフトがありません'); return;
-    }
-    const staff = res.data[date];
-    const lines = staff.map(function(s){ return s.name+'さん（'+(s.type||'業務')+'）'; });
-    const text = '【シフト連絡】\n'+fmtDateJP(date)+'\n本日の担当は\n'+lines.join('\n')+'\nです。よろしくお願いします。';
-    postNoCors(GAS_URL.shift, { action:'sendLineMessage', text:text }, function() {
-      resEl.textContent='📨 LINEに送信しました'; resEl.classList.add('show');
-    });
-  };
-  jsonp(GAS_URL.shift, { action:'getConfirmedShift', year:parts[0], month:parseInt(parts[1],10) }, cbName);
+  postNoCors(GAS_URL.shift, { action:'sendLineMessage', text:'シフトが確定しました' }, function() {
+    resEl.textContent='📨 LINEに送信しました'; resEl.classList.add('show');
+  });
 }
 
 // ---- シフト設定 ----
