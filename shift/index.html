@@ -258,7 +258,7 @@ function loadSettingsData() {
       const deadlineEnd = new Date(parseInt(dp[0],10), parseInt(dp[1],10)-1, parseInt(dp[2],10), 23, 59, 59);
       const isPastDeadline = new Date() > deadlineEnd;
       if (isPastDeadline) {
-        b.textContent = '⚠️ 提出期限（'+deadlineLabel+'）を過ぎています。送信できません。';
+        b.textContent = '⚠️ 提出期限（'+deadlineLabel+'）を過ぎています。変更する場合は担当者へ直接連絡してください。';
         b.style.background = 'var(--red-50)';
         b.style.borderColor = 'rgba(226,75,74,0.3)';
         b.style.color = 'var(--red-600)';
