@@ -187,7 +187,7 @@
 
           <div class="line-send-panel">
             <div class="card-title" style="color:var(--green-600);margin-bottom:10px;">📨 LINEグループへ通知</div>
-            <button class="btn btn-primary" style="background:var(--green-400);" onclick="sendLineShiftMessage()">今すぐ送信</button>
+            <button id="line-send-btn" class="btn btn-primary" style="background:var(--green-400);" onclick="sendLineShiftMessage()">今すぐ送信</button>
             <div id="line-send-result" class="success-msg mt-8"></div>
           </div>
         </div>
@@ -811,8 +811,11 @@ function showAdminConfDetail(date) {
 // LINE送信
 function sendLineShiftMessage() {
   const resEl = document.getElementById('line-send-result');
+  const btn   = document.getElementById('line-send-btn');
   resEl.classList.remove('show');
+  if (btn) { btn.disabled = true; btn.textContent = '送信中…'; }
   postNoCors(GAS_URL.shift, { action:'sendLineMessage', text:'シフトが確定しました' }, function() {
+    if (btn) { btn.disabled = false; btn.textContent = '今すぐ送信'; }
     resEl.textContent='📨 LINEに送信しました'; resEl.classList.add('show');
   });
 }
