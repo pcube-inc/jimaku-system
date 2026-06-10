@@ -29,6 +29,28 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  // LINEからのWebhookはJSONボディで届く（e.parameterは空）
+  if (e.postData && e.postData.type === 'application/json') {
+    try {
+      const body = JSON.parse(e.postData.contents);
+      const events = body.events || [];
+      const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+      let sheet = ss.getSheetByName('Webhook Log');
+      if (!sheet) sheet = ss.insertSheet('Webhook Log');
+      if (events.length === 0) {
+        sheet.appendRow([new Date(), 'ping', '', JSON.stringify(body)]);
+      }
+      events.forEach(function(ev) {
+        const src = ev.source || {};
+        Logger.log('SOURCE: ' + JSON.stringify(src));
+        sheet.appendRow([new Date(), src.type || 'unknown', src.groupId || src.userId || '', JSON.stringify(ev)]);
+      });
+    } catch(err) {
+      Logger.log('Webhook parse error: ' + err.message);
+    }
+    return ContentService.createTextOutput('OK');
+  }
+
   const action = e.parameter.action || '';
   let result = {};
   try {
@@ -319,8 +341,20 @@ function sendLineMessageAction(params) {
   const text = params.text;
   if (!text) return { success: false, error: 'text required' };
   const settings = getSettingMap();
-  sendLineMessage(settings['line_group_id'], text, settings['line_channel_token']);
+  sendLineBroadcast(text, settings['line_channel_token']);
   return { success: true };
+}
+
+function sendLineBroadcast(text, token) {
+  if (!text || !token) return;
+  const options = {
+    method: 'post', contentType: 'application/json',
+    headers: { 'Authorization': 'Bearer '+token },
+    payload: JSON.stringify({ messages: [{ type: 'text', text: text }] }),
+    muteHttpExceptions: true,
+  };
+  const res = UrlFetchApp.fetch('https://api.line.me/v2/bot/message/broadcast', options);
+  Logger.log('LINE Broadcast: '+res.getResponseCode()+' '+res.getContentText());
 }
 
 /**
