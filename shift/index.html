@@ -251,7 +251,22 @@ function loadSettingsData() {
     renderCalendar();
     if (settings.shift_deadline) {
       const b = document.getElementById('deadline-banner');
-      b.textContent = '提出期限：'+settings.shift_deadline;
+      // "YYYY-MM-DD" → "YYYY年M月D日まで" に変換
+      const dp = settings.shift_deadline.split('-');
+      const deadlineLabel = parseInt(dp[0],10)+'年'+parseInt(dp[1],10)+'月'+parseInt(dp[2],10)+'日まで';
+      // 期限切れ判定：当日23:59まで有効（翌日0:00以降は期限切れ）
+      const deadlineEnd = new Date(parseInt(dp[0],10), parseInt(dp[1],10)-1, parseInt(dp[2],10), 23, 59, 59);
+      const isPastDeadline = new Date() > deadlineEnd;
+      if (isPastDeadline) {
+        b.textContent = '⚠️ 提出期限（'+deadlineLabel+'）を過ぎています。送信できません。';
+        b.style.background = 'var(--red-50)';
+        b.style.borderColor = 'rgba(226,75,74,0.3)';
+        b.style.color = 'var(--red-600)';
+        const submitBtn = document.getElementById('submit-shift-btn');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.4'; submitBtn.title = '提出期限が過ぎています'; }
+      } else {
+        b.textContent = '📅 提出期限：'+deadlineLabel;
+      }
       b.classList.add('show');
     }
   };
@@ -377,6 +392,12 @@ function submitShift() {
   errEl.classList.remove('show');
   if (!name)  { errEl.textContent='スタッフ名を選択してください'; errEl.classList.add('show'); return; }
   if (!Object.keys(selections).length) { errEl.textContent='日付を選択してください'; errEl.classList.add('show'); return; }
+  // 期限チェック
+  if (settings && settings.shift_deadline) {
+    const dp = settings.shift_deadline.split('-');
+    const deadlineEnd = new Date(parseInt(dp[0],10), parseInt(dp[1],10)-1, parseInt(dp[2],10), 23, 59, 59);
+    if (new Date() > deadlineEnd) { errEl.textContent='提出期限を過ぎているため送信できません。'; errEl.classList.add('show'); return; }
+  }
   const btn = document.getElementById('submit-shift-btn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>送信中…';
