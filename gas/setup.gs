@@ -121,16 +121,29 @@ function getStaff() {
 }
 
 // ---- POST アクション ----
+const WAKEUP_GAS_URL = 'https://script.google.com/macros/s/AKfycbw0RTorEoVI1mwkKE2UN7Fah1lwUBS2t87jZZT-XkA3vyDchWlGMK6w3R0i6xnizdI0/exec';
+
 function updateSettings(params) {
   const sheet = getSheet('管理者設定');
   const rows  = sheet.getDataRange().getValues();
+  const triggerKeys = ['wakeup_reminder_time', 'wakeup_deadline'];
+  let triggerChanged = false;
   Object.keys(params).filter(function(k){ return k !== 'action'; }).forEach(function(key) {
     let found = false;
     for (let i = 1; i < rows.length; i++) {
       if (rows[i][0] === key) { sheet.getRange(i+1,2).setValue(params[key]); found = true; break; }
     }
     if (!found) sheet.appendRow([key, params[key]]);
+    if (triggerKeys.indexOf(key) >= 0) triggerChanged = true;
   });
+  if (triggerChanged) {
+    try {
+      UrlFetchApp.fetch(WAKEUP_GAS_URL + '?action=resetTriggers', { muteHttpExceptions: true });
+      Logger.log('wakeup resetTriggers 呼び出し完了');
+    } catch(e) {
+      Logger.log('wakeup resetTriggers 呼び出し失敗: ' + e.message);
+    }
+  }
   return { success: true };
 }
 

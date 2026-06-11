@@ -9,6 +9,7 @@ function doGet(e) {
     if      (action === 'getStaff')          result = getStaff();
     else if (action === 'getStaffByLineId')  result = getStaffByLineId(e.parameter);
     else if (action === 'checkTodayShift')   result = checkTodayShift(e.parameter);
+    else if (action === 'resetTriggers') { setupTriggers(); result = { success: true }; }
     else result = { success: false, error: 'unknown action' };
   } catch(err) { result = { success: false, error: err.message }; }
   const json = JSON.stringify(result);
@@ -26,7 +27,6 @@ function doPost(e) {
   return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
 }
 
-// ---- ヘルパー ----
 function openSS() { return SpreadsheetApp.openById(SPREADSHEET_ID); }
 function getSheet(name) {
   const s = openSS().getSheetByName(name);
@@ -51,7 +51,6 @@ function todayStr() {
   return now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
 }
 function staffName(row) { return (row[2]&&String(row[2]).trim()) ? String(row[2]).trim() : String(row[1]).trim(); }
-// 有効フラグ（E列=index4）。空/未設定の旧スタッフは有効とみなす（後方互換）
 function isEnabled(row) {
   const v = row[4];
   if (v === false || v === 'FALSE') return false;
@@ -65,13 +64,18 @@ function timeStr(val) {
   }
   return String(val||'').trim() || '00:00';
 }
-// テンプレート変数を置換する
+// 日付値（Date オブジェクト or "YYYY-MM-DD" 文字列）→ "YYYY-MM-DD" 文字列に変換
+function dateStr(val) {
+  if (val instanceof Date) {
+    return val.getFullYear()+'-'+String(val.getMonth()+1).padStart(2,'0')+'-'+String(val.getDate()).padStart(2,'0');
+  }
+  return String(val||'').trim();
+}
 function applyTemplate(template, vars) {
   let s = template || '';
   Object.keys(vars).forEach(function(k) { s = s.split('{'+k+'}').join(vars[k]); });
   return s;
 }
-// LINE個別トークへメッセージ送信
 function sendLineMessageToUser(lineUserId, text, token) {
   if (!lineUserId || !text || !token) return;
   const options = {
@@ -92,7 +96,6 @@ function getStaff() {
   for (let i = 1; i < rows.length; i++) { if (isEnabled(rows[i])) names.push(staffName(rows[i])); }
   return { success: true, data: names };
 }
-
 function getStaffByLineId(params) {
   const lineUserId = params.lineUserId;
   if (!lineUserId) return { success: false, error: 'lineUserId required' };
@@ -103,7 +106,6 @@ function getStaffByLineId(params) {
   }
   return { success: true, data: { found: false } };
 }
-
 function checkTodayShift(params) {
   const name       = params.name;
   const today      = todayStr();
@@ -113,14 +115,14 @@ function checkTodayShift(params) {
   const shiftRows  = shiftSheet.getDataRange().getValues();
   let onShift = false;
   for (let i = 1; i < shiftRows.length; i++) {
-    if (shiftRows[i][0] === today && shiftRows[i][1] === name) { onShift = true; break; }
+    if (dateStr(shiftRows[i][0]) === today && shiftRows[i][1] === name) { onShift = true; break; }
   }
   if (!onShift) return { success: true, data: { onShift: false } };
   const wakeSheet = getSheet('起床確認');
   const wakeRows  = wakeSheet.getDataRange().getValues();
   let pressedAt = null;
   for (let i = 1; i < wakeRows.length; i++) {
-    if (wakeRows[i][0] === today && wakeRows[i][1] === name) {
+    if (dateStr(wakeRows[i][0]) === today && wakeRows[i][1] === name) {
       const dt = new Date(wakeRows[i][2]);
       pressedAt = String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
       break;
@@ -138,7 +140,7 @@ function submitWakeup(params) {
   const sheet    = getSheet('起床確認');
   const rows = sheet.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] === today && rows[i][1] === name) return { success: true, alreadyPressed: true };
+    if (dateStr(rows[i][0]) === today && rows[i][1] === name) return { success: true, alreadyPressed: true };
   }
   sheet.appendRow([today, name, new Date(), deadline, false]);
   return { success: true };
@@ -147,49 +149,72 @@ function submitWakeup(params) {
 // ---- 定期実行関数 ----
 
 /**
+ * 指定関数のトリガーを翌日の指定時刻に再スケジュールする
+ * GAS の atHour() は分を指定できないため、at(date) で正確な時刻を設定する
+ */
+function rescheduleTrigger(funcName, timeString) {
+  // 既存トリガーを削除
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === funcName) ScriptApp.deleteTrigger(t);
+  });
+  // 翌日の同時刻を計算
+  const parts  = String(timeString).split(':');
+  const hour   = parseInt(parts[0], 10);
+  const minute = parseInt(parts[1] || '0', 10);
+  const next   = new Date();
+  next.setDate(next.getDate() + 1);
+  next.setHours(hour, minute, 0, 0);
+  ScriptApp.newTrigger(funcName).timeBased().at(next).create();
+  Logger.log(funcName + ' を翌日 ' + hour + ':' + String(minute).padStart(2,'0') + ' に再スケジュール');
+}
+
+/**
  * sendWakeupReminder()
- * 【起床確認リマインダー】wakeup_reminder_time に毎日実行するトリガーを設定すること
- * 当日シフトのスタッフへ個別LINEトークでリマインダーを送信する
+ * 当日シフトのスタッフへ個別 LINE でリマインダーを送信し、翌日同時刻に自己再スケジュール
  */
 function sendWakeupReminder() {
-  const today      = todayStr();
-  const setting    = getSettingMap();
-  const token      = setting['line_channel_token'] || '';
-  const deadline   = timeStr(setting['wakeup_deadline'] || '08:00');
-  const template   = setting['template_wakeup']    || '{name}さん、本日は出勤日です。{deadline}までに起床確認ボタンを押してください。';
-  if (!token) { Logger.log('line_channel_token 未設定'); return; }
+  const today    = todayStr();
+  const setting  = getSettingMap();
+  const token    = setting['line_channel_token'] || '';
+  const deadline = timeStr(setting['wakeup_deadline']      || '08:00');
+  const reminder = timeStr(setting['wakeup_reminder_time'] || '07:00');
+  const template = setting['template_wakeup'] || '{name}さん、本日は出勤日です。{deadline}までに起床確認ボタンを押してください。';
 
-  // 当日シフトのスタッフ名リストを取得
-  const shiftSheet = getSheet('シフト確定');
-  const shiftRows  = shiftSheet.getDataRange().getValues();
-  const scheduled  = [];
-  for (let i = 1; i < shiftRows.length; i++) {
-    if (shiftRows[i][0] === today) scheduled.push(shiftRows[i][1]);
-  }
-  if (!scheduled.length) { Logger.log('本日のシフトスタッフなし'); return; }
-
-  // スタッフ一覧からline_user_idを取得してLINE個別送信
-  const staffSheet = getSheet('スタッフ一覧');
-  const staffRows  = staffSheet.getDataRange().getValues();
-  scheduled.forEach(function(name) {
-    for (let i = 1; i < staffRows.length; i++) {
-      if (staffName(staffRows[i]) === name) {
-        const lineUserId = staffRows[i][0];
-        if (!lineUserId) { Logger.log(name+': line_user_id 未登録のためスキップ'); return; }
-        const msg = applyTemplate(template, { name: name, deadline: deadline });
-        sendLineMessageToUser(lineUserId, msg, token);
-        return;
-      }
+  if (!token) {
+    Logger.log('line_channel_token 未設定');
+  } else {
+    const shiftSheet = getSheet('シフト確定');
+    const shiftRows  = shiftSheet.getDataRange().getValues();
+    const scheduled  = [];
+    for (let i = 1; i < shiftRows.length; i++) {
+      if (dateStr(shiftRows[i][0]) === today) scheduled.push(shiftRows[i][1]);
     }
-    Logger.log(name+': スタッフ一覧に見つからないためスキップ');
-  });
+    if (!scheduled.length) {
+      Logger.log('本日のシフトスタッフなし');
+    } else {
+      const staffSheet = getSheet('スタッフ一覧');
+      const staffRows  = staffSheet.getDataRange().getValues();
+      scheduled.forEach(function(name) {
+        for (let i = 1; i < staffRows.length; i++) {
+          if (staffName(staffRows[i]) === name) {
+            const lineUserId = staffRows[i][0];
+            if (!lineUserId) { Logger.log(name+': line_user_id 未登録のためスキップ'); return; }
+            const msg = applyTemplate(template, { name: name, deadline: deadline });
+            sendLineMessageToUser(lineUserId, msg, token);
+            return;
+          }
+        }
+        Logger.log(name+': スタッフ一覧に見つからないためスキップ');
+      });
+    }
+  }
+  // 翌日の設定時刻に再スケジュール
+  rescheduleTrigger('sendWakeupReminder', reminder);
 }
 
 /**
  * checkUnconfirmed()
- * 【起床未確認チェック】wakeup_deadline 時刻に毎日実行するトリガーを設定すること
- * 期限までに起床確認ボタンが押されていないスタッフを admin_email へメール通知する
- * MailApp.sendEmail() の送信上限は無料Gmailで1日100通
+ * 期限までに起床確認されていないスタッフを admin_email へメール通知し、翌日同時刻に自己再スケジュール
  */
 function checkUnconfirmed() {
   const today      = todayStr();
@@ -197,77 +222,71 @@ function checkUnconfirmed() {
   const adminEmail = setting['admin_email'] || '';
   const deadline   = timeStr(setting['wakeup_deadline'] || '08:00');
   const template   = setting['template_wakeup_unconfirmed'] || '{name}さんの起床確認ボタンが押されていません';
-  if (!adminEmail) { Logger.log('admin_email 未設定'); return; }
 
-  const shiftSheet = getSheet('シフト確定');
-  const shiftRows  = shiftSheet.getDataRange().getValues();
-  const scheduled  = [];
-  for (let i = 1; i < shiftRows.length; i++) { if (shiftRows[i][0] === today) scheduled.push(shiftRows[i][1]); }
-  if (!scheduled.length) return;
+  if (!adminEmail) {
+    Logger.log('admin_email 未設定');
+  } else {
+    const shiftSheet = getSheet('シフト確定');
+    const shiftRows  = shiftSheet.getDataRange().getValues();
+    const scheduled  = [];
+    for (let i = 1; i < shiftRows.length; i++) { if (dateStr(shiftRows[i][0]) === today) scheduled.push(shiftRows[i][1]); }
 
-  const wakeSheet = getSheet('起床確認');
-  const wakeRows  = wakeSheet.getDataRange().getValues();
-  const pressed   = [];
-  for (let i = 1; i < wakeRows.length; i++) { if (wakeRows[i][0] === today) pressed.push(wakeRows[i][1]); }
+    if (scheduled.length > 0) {
+      const wakeSheet = getSheet('起床確認');
+      const wakeRows  = wakeSheet.getDataRange().getValues();
+      const pressed   = [];
+      for (let i = 1; i < wakeRows.length; i++) { if (dateStr(wakeRows[i][0]) === today) pressed.push(wakeRows[i][1]); }
 
-  scheduled.forEach(function(name) {
-    if (pressed.indexOf(name) >= 0) return;
-    const body = applyTemplate(template, { name: name, deadline: deadline });
-    MailApp.sendEmail({
-      to:      adminEmail,
-      subject: '【起床未確認】'+name+'さんが未確認です',
-      body:    body + '\n\n本日日付：' + today + '\n期限時刻：' + deadline,
-    });
-    // 通知済みフラグをセット
-    const rows2 = wakeSheet.getDataRange().getValues();
-    let found = false;
-    for (let i = 1; i < rows2.length; i++) {
-      if (rows2[i][0] === today && rows2[i][1] === name) { wakeSheet.getRange(i+1,5).setValue(true); found = true; break; }
+      scheduled.forEach(function(name) {
+        if (pressed.indexOf(name) >= 0) return;
+        const body = applyTemplate(template, { name: name, deadline: deadline });
+        MailApp.sendEmail({ to: adminEmail, subject: '【起床未確認】'+name+'さんが未確認です',
+          body: body + '\n\n本日日付：' + today + '\n期限時刻：' + deadline });
+        const rows2 = wakeSheet.getDataRange().getValues();
+        let found = false;
+        for (let i = 1; i < rows2.length; i++) {
+          if (dateStr(rows2[i][0]) === today && rows2[i][1] === name) { wakeSheet.getRange(i+1,5).setValue(true); found = true; break; }
+        }
+        if (!found) wakeSheet.appendRow([today, name, '', deadline, true]);
+      });
     }
-    if (!found) wakeSheet.appendRow([today, name, '', deadline, true]);
-  });
+  }
+  // 翌日の設定時刻に再スケジュール
+  rescheduleTrigger('checkUnconfirmed', deadline);
 }
 
 /**
  * setupTriggers()
- * GASエディタから一度だけ手動実行してトリガーを設定する
- * 既存の sendWakeupReminder / checkUnconfirmed トリガーを削除してから再作成する
+ * 初回のみ手動実行。設定された正確な時刻（HH:MM）でトリガーを作成する。
+ * 以降は sendWakeupReminder / checkUnconfirmed が自己再スケジュールするため不要。
  */
 function setupTriggers() {
-  const setting          = getSettingMap();
-  const reminderTimeStr  = timeStr(setting['wakeup_reminder_time'] || '07:00');
-  const deadlineTimeStr  = timeStr(setting['wakeup_deadline']      || '08:00');
+  const setting         = getSettingMap();
+  const reminderTimeStr = timeStr(setting['wakeup_reminder_time'] || '07:00');
+  const deadlineTimeStr = timeStr(setting['wakeup_deadline']      || '08:00');
 
-  // 既存トリガーを削除（同名関数のものを全削除）
+  // 既存トリガーを削除
   ScriptApp.getProjectTriggers().forEach(function(t) {
     const fn = t.getHandlerFunction();
-    if (fn === 'sendWakeupReminder' || fn === 'checkUnconfirmed') {
-      ScriptApp.deleteTrigger(t);
-    }
+    if (fn === 'sendWakeupReminder' || fn === 'checkUnconfirmed') ScriptApp.deleteTrigger(t);
   });
 
-  // 時刻値（文字列 "HH:MM" または Date オブジェクト）→ 時(int) に変換
-  function parseHour(val) {
-    if (val instanceof Date) return val.getHours();
-    return parseInt((String(val||'07:00')).split(':')[0], 10);
+  function makeDate(timeString) {
+    const parts  = String(timeString).split(':');
+    const hour   = parseInt(parts[0], 10);
+    const minute = parseInt(parts[1] || '0', 10);
+    const d = new Date();
+    d.setHours(hour, minute, 0, 0);
+    if (d <= new Date()) d.setDate(d.getDate() + 1); // 過去なら翌日
+    return d;
   }
 
-  const reminderHour = parseHour(reminderTimeStr);
-  const deadlineHour = parseHour(deadlineTimeStr);
+  const reminderDate = makeDate(reminderTimeStr);
+  const deadlineDate = makeDate(deadlineTimeStr);
 
-  // sendWakeupReminder トリガー（リマインダー時刻）
-  ScriptApp.newTrigger('sendWakeupReminder')
-    .timeBased()
-    .everyDays(1)
-    .atHour(reminderHour)
-    .create();
+  ScriptApp.newTrigger('sendWakeupReminder').timeBased().at(reminderDate).create();
+  ScriptApp.newTrigger('checkUnconfirmed').timeBased().at(deadlineDate).create();
 
-  // checkUnconfirmed トリガー（期限時刻）
-  ScriptApp.newTrigger('checkUnconfirmed')
-    .timeBased()
-    .everyDays(1)
-    .atHour(deadlineHour)
-    .create();
-
-  Logger.log('トリガー設定完了：sendWakeupReminder=' + reminderHour + 'h, checkUnconfirmed=' + deadlineHour + 'h');
+  Logger.log('トリガー設定完了：sendWakeupReminder=' + reminderDate.toLocaleString('ja-JP') +
+             ', checkUnconfirmed=' + deadlineDate.toLocaleString('ja-JP'));
 }
