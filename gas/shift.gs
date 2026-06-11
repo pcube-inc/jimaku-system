@@ -82,7 +82,14 @@ function getSettingMap() {
   const sheet = getSheet('管理者設定');
   const rows  = sheet.getDataRange().getValues();
   const map   = {};
-  for (let i = 1; i < rows.length; i++) { map[rows[i][0]] = rows[i][1]; }
+  for (let i = 1; i < rows.length; i++) {
+    let v = rows[i][1];
+    // Google Sheetsが時刻文字列をDateに変換する問題を修正
+    if (v instanceof Date) {
+      v = String(v.getHours()).padStart(2,'0') + ':' + String(v.getMinutes()).padStart(2,'0');
+    }
+    map[rows[i][0]] = v;
+  }
   return map;
 }
 function todayStr() {

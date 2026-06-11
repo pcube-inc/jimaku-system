@@ -62,7 +62,14 @@ function getSettingMap() {
   const sheet = getSheet('管理者設定');
   const rows  = sheet.getDataRange().getValues();
   const map   = {};
-  for (let i = 1; i < rows.length; i++) { map[rows[i][0]] = rows[i][1]; }
+  for (let i = 1; i < rows.length; i++) {
+    let v = rows[i][1];
+    // Google Sheetsが時刻文字列をDateに変換する問題を修正
+    if (v instanceof Date) {
+      v = String(v.getHours()).padStart(2,'0') + ':' + String(v.getMinutes()).padStart(2,'0');
+    }
+    map[rows[i][0]] = v;
+  }
   return map;
 }
 
@@ -182,7 +189,7 @@ function setupSheets() {
   if (settingSheet && settingSheet.getLastRow() <= 1) {
     [['admin_email','admin@gmail.com'],['cc_emails',''],['wakeup_reminder_time','07:00'],
      ['wakeup_deadline','08:00'],['shift_days','1,2,4,5'],['line_channel_token',''],
-     ['line_group_id',''],['admin_password','admin1234']
+     ['admin_password','admin1234']
     ].forEach(function(row){ settingSheet.appendRow(row); });
   }
   Logger.log('セットアップ完了（v2スキーマ）');
