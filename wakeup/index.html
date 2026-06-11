@@ -6,14 +6,14 @@
 <title>起床確認 | 字幕システム</title>
 <link rel="stylesheet" href="../css/common.css">
 <style>
-.wakeup-btn-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 0; }
-.wakeup-big-btn { width:180px; height:180px; border-radius:50%; border:none; background:var(--green-400); color:#fff; font-size:20px; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(29,158,117,.35); transition:transform .15s,box-shadow .15s; font-family:var(--font); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
-.wakeup-big-btn:active { transform:scale(.95); box-shadow:0 4px 12px rgba(29,158,117,.25); }
-.wakeup-big-btn:disabled { background:var(--gray-400); box-shadow:none; cursor:default; transform:none; }
-.wakeup-icon { font-size:36px; }
+.wakeup-btn-group { display:flex; flex-direction:column; gap:16px; margin-top:24px; }
+.wakeup-btn { width:100%; min-height:72px; border-radius:var(--radius-lg); border:none; font-size:18px; font-weight:700; font-family:var(--font); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:opacity .15s,transform .1s; padding:1.2rem; background:var(--green-400); color:#fff; box-shadow:0 4px 16px rgba(29,158,117,.3); }
+.wakeup-btn:active { transform:scale(.97); }
+.wakeup-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+.wakeup-icon { font-size:24px; }
 .sent-msg { text-align:center; padding:24px 0; font-size:16px; color:var(--green-600); font-weight:600; }
 .no-shift-msg { text-align:center; padding:32px 16px; color:var(--text-hint); font-size:15px; }
-.deadline-info { text-align:center; font-size:13px; color:var(--text-hint); margin-top:12px; }
+.deadline-info { text-align:center; font-size:13px; color:var(--text-hint); margin-top:8px; }
 .liff-name-badge { background:var(--green-50); border:1px solid var(--green-100); border-radius:var(--radius); padding:8px 12px; font-size:13px; color:var(--green-600); margin-bottom:12px; display:none; }
 .liff-name-badge.show { display:flex; align-items:center; gap:8px; }
 </style>
@@ -45,16 +45,16 @@
 
     <div id="wakeup-area" class="hidden">
       <div id="btn-area" class="hidden">
-        <div class="wakeup-btn-wrap">
-          <button class="wakeup-big-btn" id="wakeup-btn" onclick="submitWakeup()">
-            <span class="wakeup-icon">🌄</span><span>起床OK</span>
+        <div class="wakeup-btn-group">
+          <button class="wakeup-btn" id="wakeup-btn" onclick="submitWakeup()">
+            <span class="wakeup-icon">🌄</span><span>起床</span>
           </button>
-          <div class="deadline-info" id="deadline-info"></div>
         </div>
+        <div class="deadline-info" id="deadline-info"></div>
       </div>
       <div id="sent-area" class="hidden">
         <div class="card" style="margin-top:16px;">
-          <div class="sent-msg">✅ <span id="sent-time"></span> に送信済みです</div>
+          <div class="sent-msg">✅ 送信しました</div>
         </div>
       </div>
       <div id="no-shift-area" class="hidden">
@@ -116,7 +116,6 @@ function checkShift(name) {
     document.getElementById('wakeup-area').classList.remove('hidden');
     if (!d.onShift) { document.getElementById('no-shift-area').classList.remove('hidden'); return; }
     if (d.pressedAt) {
-      document.getElementById('sent-time').textContent = d.pressedAt;
       document.getElementById('sent-area').classList.remove('hidden');
     } else {
       document.getElementById('deadline-info').textContent = '期限：'+(d.deadline||'');
@@ -129,16 +128,12 @@ function checkShift(name) {
 function submitWakeup() {
   const name = lockedName || document.getElementById('staff-name').value;
   if (!name) return;
-  if (!window.confirm('起床確認を送信しますか？')) return;
   const btn = document.getElementById('wakeup-btn');
   btn.disabled = true;
   btn.innerHTML = '<span class="wakeup-icon">⏳</span><span>送信中…</span>';
 
   postNoCors(GAS_URL.wakeup, { action:'submitWakeup', name:name }, function() {
     document.getElementById('btn-area').classList.add('hidden');
-    const now = new Date();
-    document.getElementById('sent-time').textContent =
-      String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
     document.getElementById('sent-area').classList.remove('hidden');
     showToast('送信しました');
   });
