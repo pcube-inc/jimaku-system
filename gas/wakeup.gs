@@ -220,6 +220,7 @@ function checkUnconfirmed() {
   const today      = todayStr();
   const setting    = getSettingMap();
   const adminEmail = setting['admin_email'] || '';
+  const ccEmails   = setting['cc_emails']   || '';
   const deadline   = timeStr(setting['wakeup_deadline'] || '08:00');
   const template   = setting['template_wakeup_unconfirmed'] || '{name}さんの起床確認ボタンが押されていません';
 
@@ -240,8 +241,10 @@ function checkUnconfirmed() {
       scheduled.forEach(function(name) {
         if (pressed.indexOf(name) >= 0) return;
         const body = applyTemplate(template, { name: name, deadline: deadline });
-        MailApp.sendEmail({ to: adminEmail, subject: '【起床未確認】'+name+'さんが未確認です',
-          body: body + '\n\n本日日付：' + today + '\n期限時刻：' + deadline });
+        const mailOpts = { to: adminEmail, subject: '【起床未確認】'+name+'さんが未確認です',
+          body: body + '\n\n本日日付：' + today + '\n期限時刻：' + deadline };
+        if (ccEmails) mailOpts.cc = ccEmails;
+        MailApp.sendEmail(mailOpts);
         const rows2 = wakeSheet.getDataRange().getValues();
         let found = false;
         for (let i = 1; i < rows2.length; i++) {
