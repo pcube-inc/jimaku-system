@@ -13,7 +13,6 @@
 .wakeup-icon { font-size:24px; }
 .sent-msg { text-align:center; padding:24px 0; font-size:16px; color:var(--green-600); font-weight:600; }
 .no-shift-msg { text-align:center; padding:32px 16px; color:var(--text-hint); font-size:15px; }
-.deadline-info { text-align:center; font-size:13px; color:var(--text-hint); margin-top:8px; }
 .liff-name-badge { background:var(--green-50); border:1px solid var(--green-100); border-radius:var(--radius); padding:8px 12px; font-size:13px; color:var(--green-600); margin-bottom:12px; display:none; }
 .liff-name-badge.show { display:flex; align-items:center; gap:8px; }
 </style>
@@ -43,24 +42,17 @@
 
     <div id="error-msg" class="error-msg"></div>
 
-    <div id="wakeup-area" class="hidden">
-      <div id="btn-area" class="hidden">
-        <div class="wakeup-btn-group">
-          <button class="wakeup-btn" id="wakeup-btn" onclick="submitWakeup()">
-            <span class="wakeup-icon">🌄</span><span>起床</span>
-          </button>
-        </div>
-        <div class="deadline-info" id="deadline-info"></div>
+    <div id="btn-area" class="hidden">
+      <div class="wakeup-btn-group">
+        <button class="wakeup-btn" id="wakeup-btn" onclick="submitWakeup()">
+          <span class="wakeup-icon">🌄</span><span>起床</span>
+        </button>
       </div>
-      <div id="sent-area" class="hidden">
-        <div class="card" style="margin-top:16px;">
-          <div class="sent-msg">✅ 送信しました</div>
-        </div>
-      </div>
-      <div id="no-shift-area" class="hidden">
-        <div class="card" style="margin-top:16px;">
-          <div class="no-shift-msg">本日のシフトはありません</div>
-        </div>
+    </div>
+
+    <div id="sent-area" class="hidden">
+      <div class="card" style="margin-top:16px;">
+        <div class="sent-msg">✅ 送信しました</div>
       </div>
     </div>
   </div>
@@ -72,14 +64,13 @@
 <script>
 let lockedName = null;
 
-// LIFF初期化
 LiffHelper.init(LIFF_ID.wakeup, GAS_URL.wakeup, function(name, isLiff) {
   if (name) {
     lockedName = name;
     document.getElementById('liff-badge-name').textContent = name;
     document.getElementById('liff-badge').classList.add('show');
     document.getElementById('staff-select-wrap').classList.add('hidden');
-    checkShift(name);
+    document.getElementById('btn-area').classList.remove('hidden');
   } else {
     loadStaffNames();
   }
@@ -101,28 +92,16 @@ function loadStaffNames() {
 
 function onStaffChange() {
   const name = document.getElementById('staff-name').value;
-  hideAll();
   document.getElementById('error-msg').classList.remove('show');
-  if (!name) return;
-  checkShift(name);
-}
-
-function checkShift(name) {
-  const cbName = 'cb_check_'+Date.now();
-  window[cbName] = function(res) {
-    cleanup(cbName);
-    if (!res.success) { showError('データの取得に失敗しました'); return; }
-    const d = res.data;
-    document.getElementById('wakeup-area').classList.remove('hidden');
-    if (!d.onShift) { document.getElementById('no-shift-area').classList.remove('hidden'); return; }
-    if (d.pressedAt) {
-      document.getElementById('sent-area').classList.remove('hidden');
-    } else {
-      document.getElementById('deadline-info').textContent = '期限：'+(d.deadline||'');
-      document.getElementById('btn-area').classList.remove('hidden');
-    }
-  };
-  jsonp(GAS_URL.wakeup, { action:'checkTodayShift', name:name }, cbName);
+  document.getElementById('sent-area').classList.add('hidden');
+  if (!name) {
+    document.getElementById('btn-area').classList.add('hidden');
+    return;
+  }
+  document.getElementById('btn-area').classList.remove('hidden');
+  const btn = document.getElementById('wakeup-btn');
+  btn.disabled = false;
+  btn.innerHTML = '<span class="wakeup-icon">🌄</span><span>起床</span>';
 }
 
 function submitWakeup() {
@@ -139,10 +118,6 @@ function submitWakeup() {
   });
 }
 
-function hideAll() {
-  ['btn-area','sent-area','no-shift-area'].forEach(function(id){ document.getElementById(id).classList.add('hidden'); });
-  document.getElementById('wakeup-area').classList.add('hidden');
-}
 function showError(msg) {
   const el = document.getElementById('error-msg'); el.textContent=msg; el.classList.add('show');
 }
