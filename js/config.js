@@ -4,7 +4,7 @@ const GAS_URL = {
   wakeup:     'https://script.google.com/macros/s/AKfycbw0RTorEoVI1mwkKE2UN7Fah1lwUBS2t87jZZT-XkA3vyDchWlGMK6w3R0i6xnizdI0/exec',
   attendance: 'https://script.google.com/macros/s/AKfycbzksKAP49RjeMyXShitN1YzF_8dDLWhyJXIe2elGyjJyvjCkfWgtn6Cbms9bq88Az_Htw/exec',
   trouble:    'https://script.google.com/macros/s/AKfycbz4Aa-vI7mgMj8PEfvo6_ZqTe0BPqzK1FudrBv3RsiMtC-dIwHf2u9KShG55xs5cFT9/exec',
-  admin:      'https://script.google.com/macros/s/AKfycbzYlGDctgFhG6i8x5GjJl5cV_pR7Y01g6ULDoN4AFFNtXMuP9wiQzRxuQTV2bd6zVvf/exec',
+  admin:      'https://script.google.com/macros/s/AKfycbyBqJqzx4Vzkit1R8t_puzNrOiumFigk4x2QOkrYTgM9YddnBux2TlacPCRg0xDwPih/exec',
 };
 
 // スプレッドシートのURLの /d/ と /edit の間の文字列がID

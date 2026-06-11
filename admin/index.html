@@ -400,6 +400,8 @@ function saveSettings() {
   const btn = document.getElementById('save-settings-btn');
   btn.disabled=true; btn.textContent='保存中…';
   postNoCors(GAS_URL.admin, data, function() {
+    // wakeup トリガーを再設定（フロントエンドから直接呼ぶことでタイムアウトを回避）
+    fetch(GAS_URL.wakeup + '?action=resetTriggers').catch(function(){});
     btn.disabled=false; btn.textContent='設定を保存';
     sucEl.textContent='保存しました'; sucEl.classList.add('show');
     document.getElementById('new_password').value = '';
