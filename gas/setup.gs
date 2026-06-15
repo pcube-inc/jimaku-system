@@ -207,7 +207,8 @@ function setupSheets() {
   if (settingSheet && settingSheet.getLastRow() <= 1) {
     [['admin_email','admin@gmail.com'],['cc_emails',''],['wakeup_reminder_time','07:00'],
      ['wakeup_deadline','08:00'],['shift_days','1,2,4,5'],['line_channel_token',''],
-     ['admin_password','admin1234']
+     ['admin_password','admin1234'],
+     ['emergency_phone','']
     ].forEach(function(row){ settingSheet.appendRow(row); });
   }
   Logger.log('セットアップ完了（v2スキーマ）');

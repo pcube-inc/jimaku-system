@@ -5,6 +5,7 @@ const GAS_URL = {
   attendance: 'https://script.google.com/macros/s/AKfycbzksKAP49RjeMyXShitN1YzF_8dDLWhyJXIe2elGyjJyvjCkfWgtn6Cbms9bq88Az_Htw/exec',
   trouble:    'https://script.google.com/macros/s/AKfycbz4Aa-vI7mgMj8PEfvo6_ZqTe0BPqzK1FudrBv3RsiMtC-dIwHf2u9KShG55xs5cFT9/exec',
   admin:      'https://script.google.com/macros/s/AKfycbyBqJqzx4Vzkit1R8t_puzNrOiumFigk4x2QOkrYTgM9YddnBux2TlacPCRg0xDwPih/exec',
+  board:      'https://script.google.com/macros/s/AKfycbzLauhCKWqy14GoH5ZPJUWcj35w17U1noonDvMt4_9gWT7xT-U01KwNXVFG9xKZPFU7/exec',
 };
 
 // スプレッドシートのURLの /d/ と /edit の間の文字列がID
@@ -18,4 +19,5 @@ const LIFF_ID = {
   wakeup:     '2010288935-bwQd9Tmq',
   attendance: '2010288935-CG4xMF6B',
   trouble:    '2010288935-b0khjSws',
+  board:      '2010288935-fUznqbFW',
 };

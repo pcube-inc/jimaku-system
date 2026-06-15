@@ -19,6 +19,35 @@
 .result-out { background:#E3F2FD; color:#1565C0; border:1px solid rgba(33,150,243,.2); }
 .liff-name-badge { background:var(--green-50); border:1px solid var(--green-100); border-radius:var(--radius); padding:8px 12px; font-size:13px; color:var(--green-600); margin-bottom:12px; display:none; }
 .liff-name-badge.show { display:flex; align-items:center; gap:8px; }
+
+/* 退勤後トラブル選択 */
+.trouble-panel { display:none; margin-top:20px; }
+.trouble-panel.show { display:block; }
+.trouble-panel-title { font-size:14px; font-weight:700; color:var(--text-sub); margin-bottom:12px; text-align:center; }
+.trouble-choice-btn { width:100%; min-height:56px; border-radius:var(--radius-lg); border:2px solid; font-size:15px; font-weight:700; font-family:var(--font); cursor:pointer; display:flex; align-items:center; gap:10px; padding:0 16px; margin-bottom:10px; background:#fff; transition:opacity .15s,transform .1s; }
+.trouble-choice-btn:active { transform:scale(.97); }
+.btn-no-trouble  { border-color:var(--border-md); color:var(--text-sub); }
+.btn-call        { border-color:#E53935; color:#E53935; }
+.btn-mail        { border-color:var(--amber-400); color:var(--amber-600); }
+
+/* 緊急連絡先表示 */
+.phone-card { display:none; margin-top:16px; background:var(--red-50); border:1.5px solid rgba(226,75,74,.3); border-radius:var(--radius-lg); padding:20px; text-align:center; }
+.phone-card.show { display:block; }
+.phone-label { font-size:13px; color:var(--text-sub); margin-bottom:6px; }
+.phone-number { font-size:28px; font-weight:700; color:var(--red-600); letter-spacing:.05em; }
+.phone-call-link { display:inline-block; margin-top:12px; padding:10px 24px; background:var(--red-400); color:#fff; border-radius:var(--radius-pill); font-size:15px; font-weight:700; text-decoration:none; }
+
+/* トラブル報告フォーム */
+.trouble-form-panel { display:none; margin-top:16px; background:var(--amber-50); border:1.5px solid rgba(239,159,39,.3); border-radius:var(--radius-lg); padding:16px; }
+.trouble-form-panel.show { display:block; }
+.trouble-form-title { font-size:14px; font-weight:700; color:var(--amber-600); margin-bottom:12px; }
+.trouble-form-row { margin-bottom:10px; }
+.trouble-form-row label { display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:4px; }
+.trouble-form-row input,
+.trouble-form-row select,
+.trouble-form-row textarea { width:100%; padding:8px 10px; border:1.5px solid var(--border-md); border-radius:var(--radius); font-size:14px; font-family:var(--font); }
+.trouble-submit-btn { width:100%; min-height:48px; margin-top:12px; border-radius:var(--radius-lg); border:none; background:var(--amber-400); color:#fff; font-size:15px; font-weight:700; font-family:var(--font); cursor:pointer; }
+.trouble-submit-btn:disabled { opacity:.5; cursor:not-allowed; }
 </style>
 </head>
 <body>
@@ -46,16 +75,63 @@
 
     <div id="error-msg" class="error-msg"></div>
 
-    <div class="att-btn-group">
+    <div class="att-btn-group" id="main-buttons">
       <button class="att-btn btn-checkin"  id="btn-in"  onclick="submitAttendance('in')">
         <span class="att-icon">🏢</span><span>出勤</span>
       </button>
-      <button class="att-btn btn-checkout" id="btn-out" onclick="submitAttendance('out')">
+      <button class="att-btn btn-checkout" id="btn-out" onclick="startCheckout()">
         <span class="att-icon">🏠</span><span>退勤</span>
       </button>
     </div>
 
-    <div id="result-in"  class="result-card result-in"></div>
+    <div id="result-in" class="result-card result-in"></div>
+
+    <!-- 退勤後：トラブル有無の選択 -->
+    <div id="trouble-panel" class="trouble-panel">
+      <div class="trouble-panel-title">トラブルはありましたか？</div>
+
+      <button class="trouble-choice-btn btn-no-trouble" onclick="confirmNoTrouble()">
+        <span style="font-size:20px;">✅</span><span>なし（そのまま退勤）</span>
+      </button>
+      <button class="trouble-choice-btn btn-call" onclick="showPhoneCard()">
+        <span style="font-size:20px;">📞</span><span>トラブル有。後ほど電話します</span>
+      </button>
+      <button class="trouble-choice-btn btn-mail" onclick="showMailForm()">
+        <span style="font-size:20px;">📧</span><span>トラブル有。メールで報告します</span>
+      </button>
+    </div>
+
+    <!-- 緊急連絡先表示 -->
+    <div id="phone-card" class="phone-card">
+      <div class="phone-label">🚨 緊急連絡先</div>
+      <div class="phone-number" id="phone-number-text">読み込み中…</div>
+      <a id="phone-call-link" class="phone-call-link" href="#">📞 電話する</a>
+    </div>
+
+    <!-- トラブル報告フォーム -->
+    <div id="trouble-form-panel" class="trouble-form-panel">
+      <div class="trouble-form-title">⚠️ トラブル報告フォーム</div>
+      <div class="trouble-form-row">
+        <label>発生時刻</label>
+        <input type="time" id="tr-time" />
+      </div>
+      <div class="trouble-form-row">
+        <label>発生場所</label>
+        <input type="text" id="tr-place" placeholder="スタジオA・調整室 など" />
+      </div>
+      <div class="trouble-form-row">
+        <label>状況・内容</label>
+        <textarea id="tr-situation" rows="3" placeholder="何が起きたか記入してください"></textarea>
+      </div>
+      <div class="trouble-form-row">
+        <label>対応内容</label>
+        <textarea id="tr-action" rows="2" placeholder="どう対応したか記入してください"></textarea>
+      </div>
+      <button class="trouble-submit-btn" id="trouble-submit-btn" onclick="submitTroubleReport()">
+        📧 管理者に送信する
+      </button>
+    </div>
+
     <div id="result-out" class="result-card result-out"></div>
   </div>
 </div>
@@ -65,6 +141,7 @@
 <script src="../js/liff-helper.js"></script>
 <script>
 let lockedName = null;
+let emergencyPhone = '';
 
 LiffHelper.init(LIFF_ID.attendance, GAS_URL.attendance, function(name, isLiff) {
   if (name) {
@@ -75,6 +152,7 @@ LiffHelper.init(LIFF_ID.attendance, GAS_URL.attendance, function(name, isLiff) {
   } else {
     loadStaffNames();
   }
+  loadSettings();
 });
 
 function loadStaffNames() {
@@ -89,6 +167,17 @@ function loadStaffNames() {
   jsonp(GAS_URL.attendance, { action:'getStaff' }, cbName);
 }
 
+function loadSettings() {
+  const cbName = 'cb_settings_'+Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    if (res.success && res.data && res.data.emergency_phone) {
+      emergencyPhone = res.data.emergency_phone;
+    }
+  };
+  jsonp(GAS_URL.attendance, { action:'getSettings' }, cbName);
+}
+
 function getSelectedName() { return lockedName || document.getElementById('staff-name').value; }
 
 function submitAttendance(type) {
@@ -97,34 +186,107 @@ function submitAttendance(type) {
   errEl.classList.remove('show');
   if (!name) { errEl.textContent='スタッフ名を選択してください'; errEl.classList.add('show'); return; }
 
-  const label = type === 'in' ? '出勤' : '退勤';
-  if (!window.confirm(label+'を記録しますか？')) return;
+  if (!window.confirm('出勤を記録しますか？')) return;
   const btnIn  = document.getElementById('btn-in');
   const btnOut = document.getElementById('btn-out');
   btnIn.disabled = btnOut.disabled = true;
-  if (type==='in')  btnIn.innerHTML  = '<span class="att-icon">⏳</span><span>送信中…</span>';
-  else              btnOut.innerHTML = '<span class="att-icon">⏳</span><span>送信中…</span>';
+  btnIn.innerHTML = '<span class="att-icon">⏳</span><span>送信中…</span>';
 
-  postNoCors(GAS_URL.attendance, { action:'submitAttendance', name:name, type:type }, function() {
+  postNoCors(GAS_URL.attendance, { action:'submitAttendance', name:name, type:'in' }, function() {
     btnIn.disabled = btnOut.disabled = false;
-    btnIn.innerHTML  = '<span class="att-icon">🏢</span><span>出勤</span>';
-    btnOut.innerHTML = '<span class="att-icon">🏠</span><span>退勤</span>';
-
+    btnIn.innerHTML = '<span class="att-icon">🏢</span><span>出勤</span>';
     const now = new Date();
-    const timeStr = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-
-    if (type==='in') {
-      const el = document.getElementById('result-in');
-      el.textContent='🏢 '+timeStr+' に出勤を記録しました'; el.classList.add('show');
-      document.getElementById('result-out').classList.remove('show');
-    } else {
-      const el = document.getElementById('result-out');
-      el.textContent='🏠 '+timeStr+' に退勤を記録しました'; el.classList.add('show');
-      document.getElementById('result-in').classList.remove('show');
-    }
+    const timeStr = pad(now.getHours())+':'+pad(now.getMinutes());
+    const el = document.getElementById('result-in');
+    el.textContent='🏢 '+timeStr+' に出勤を記録しました'; el.classList.add('show');
+    document.getElementById('result-out').classList.remove('show');
     showToast('送信しました');
   });
 }
+
+function startCheckout() {
+  const name  = getSelectedName();
+  const errEl = document.getElementById('error-msg');
+  errEl.classList.remove('show');
+  if (!name) { errEl.textContent='スタッフ名を選択してください'; errEl.classList.add('show'); return; }
+  if (!window.confirm('退勤を記録しますか？')) return;
+
+  const btnIn  = document.getElementById('btn-in');
+  const btnOut = document.getElementById('btn-out');
+  btnIn.disabled = btnOut.disabled = true;
+  btnOut.innerHTML = '<span class="att-icon">⏳</span><span>送信中…</span>';
+
+  postNoCors(GAS_URL.attendance, { action:'submitAttendance', name:name, type:'out' }, function() {
+    btnIn.disabled = btnOut.disabled = false;
+    btnOut.innerHTML = '<span class="att-icon">🏠</span><span>退勤</span>';
+    document.getElementById('main-buttons').style.display = 'none';
+    document.getElementById('trouble-panel').classList.add('show');
+
+    const now = new Date();
+    document.getElementById('tr-time').value = pad(now.getHours())+':'+pad(now.getMinutes());
+    showToast('退勤を記録しました');
+  });
+}
+
+function confirmNoTrouble() {
+  document.getElementById('trouble-panel').classList.remove('show');
+  const el = document.getElementById('result-out');
+  const now = new Date();
+  el.textContent='🏠 '+pad(now.getHours())+':'+pad(now.getMinutes())+' に退勤しました（トラブルなし）';
+  el.classList.add('show');
+  document.getElementById('main-buttons').style.display = '';
+}
+
+function showPhoneCard() {
+  document.getElementById('trouble-panel').classList.remove('show');
+  const card = document.getElementById('phone-card');
+  const numEl = document.getElementById('phone-number-text');
+  const linkEl = document.getElementById('phone-call-link');
+  if (emergencyPhone) {
+    numEl.textContent = emergencyPhone;
+    linkEl.href = 'tel:'+emergencyPhone.replace(/[^\d+]/g,'');
+  } else {
+    numEl.textContent = '未設定（管理者に連絡してください）';
+    linkEl.style.display = 'none';
+  }
+  card.classList.add('show');
+}
+
+function showMailForm() {
+  document.getElementById('trouble-panel').classList.remove('show');
+  document.getElementById('trouble-form-panel').classList.add('show');
+}
+
+function submitTroubleReport() {
+  const name      = getSelectedName();
+  const time      = document.getElementById('tr-time').value;
+  const place     = document.getElementById('tr-place').value.trim();
+  const situation = document.getElementById('tr-situation').value.trim();
+  const action    = document.getElementById('tr-action').value.trim();
+  if (!situation) { showToast('状況・内容を入力してください'); return; }
+
+  const detail = [
+    '【発生時刻】'+time,
+    '【発生場所】'+(place||'記載なし'),
+    '【状況・内容】'+situation,
+    '【対応内容】'+(action||'記載なし'),
+  ].join('\n');
+
+  const btn = document.getElementById('trouble-submit-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 送信中…';
+
+  postNoCors(GAS_URL.trouble, { action:'submitTrouble2nd', name:name, detail:detail }, function() {
+    btn.textContent = '✅ 送信しました';
+    document.getElementById('trouble-form-panel').style.border = '1.5px solid var(--green-400)';
+    const el = document.getElementById('result-out');
+    el.textContent = '📧 トラブル報告を管理者に送信しました';
+    el.classList.add('show');
+    showToast('送信しました');
+  });
+}
+
+function pad(n) { return String(n).padStart(2,'0'); }
 
 function jsonp(url, params, cbName) {
   const qs = Object.keys(params).map(function(k){ return encodeURIComponent(k)+'='+encodeURIComponent(params[k]); }).join('&');

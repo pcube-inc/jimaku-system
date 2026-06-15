@@ -8,6 +8,7 @@ function doGet(e) {
   try {
     if      (action === 'getStaff')         result = getStaff();
     else if (action === 'getStaffByLineId') result = getStaffByLineId(e.parameter);
+    else if (action === 'getSettings')      result = getSettingsPublic();
     else result = { success: false, error: 'unknown action' };
   } catch(err) { result = { success: false, error: err.message }; }
   const json = JSON.stringify(result);
@@ -55,6 +56,11 @@ function applyTemplate(template, vars) {
 }
 function staffName(row) { return (row[2]&&String(row[2]).trim()) ? String(row[2]).trim() : String(row[1]).trim(); }
 function isEnabled(row) { return row[4] === true || row[4] === 'TRUE'; }
+
+function getSettingsPublic() {
+  const map = getSettingMap();
+  return { success: true, data: { emergency_phone: map['emergency_phone'] || '' } };
+}
 
 function getStaff() {
   const sheet = getSheet('スタッフ一覧');

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スタッフ掲示板 | 字幕システム</title>
+<link rel="stylesheet" href="../css/common.css">
+<style>
+/* タブ */
+.board-tabs { display:flex; gap:4px; padding:0 0 12px; overflow-x:auto; }
+.board-tab { flex-shrink:0; padding:6px 14px; border-radius:var(--radius-pill); border:1.5px solid var(--border-md); background:#fff; font-size:13px; font-weight:600; font-family:var(--font); cursor:pointer; color:var(--text-sub); white-space:nowrap; }
+.board-tab.active { background:var(--green-400); color:#fff; border-color:var(--green-400); }
+
+/* 投稿ボタン */
+.post-fab { position:fixed; bottom:24px; right:calc(50% - 215px + 16px); width:56px; height:56px; border-radius:50%; background:var(--green-400); color:#fff; font-size:26px; border:none; cursor:pointer; box-shadow:0 4px 16px rgba(29,158,117,.4); display:flex; align-items:center; justify-content:center; z-index:100; }
+@media (max-width:430px) { .post-fab { right:16px; } }
+
+/* フィード */
+.feed { display:flex; flex-direction:column; gap:12px; padding-bottom:80px; }
+.post-card { border-radius:var(--radius-lg); border:1.5px solid var(--border); background:#fff; padding:14px; }
+.post-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.post-type-badge { font-size:11px; font-weight:700; padding:3px 8px; border-radius:var(--radius-pill); white-space:nowrap; }
+.badge-notice   { background:var(--green-50);  color:var(--green-600); }
+.badge-handover { background:#E3F2FD;           color:#1565C0; }
+.badge-trouble  { background:var(--red-50);     color:var(--red-600); }
+.badge-complete { background:var(--amber-50);   color:var(--amber-600); }
+.post-author { font-size:13px; font-weight:700; color:var(--text); }
+.post-time { font-size:11px; color:var(--text-hint); margin-left:auto; }
+.post-content { font-size:14px; line-height:1.6; color:var(--text); white-space:pre-wrap; word-break:break-word; }
+.post-sub { font-size:12px; color:var(--text-sub); margin-top:6px; white-space:pre-wrap; }
+.post-footer { display:flex; align-items:center; gap:8px; margin-top:10px; border-top:1px solid var(--border); padding-top:8px; }
+.react-btn { padding:4px 12px; border-radius:var(--radius-pill); border:1.5px solid var(--border-md); background:#fff; font-size:12px; font-weight:600; cursor:pointer; color:var(--text-sub); font-family:var(--font); }
+.react-btn.reacted { background:var(--green-50); border-color:var(--green-400); color:var(--green-600); }
+.react-count { font-size:12px; color:var(--text-hint); }
+
+/* 投稿モーダル */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; display:none; align-items:flex-end; }
+.modal-overlay.show { display:flex; }
+.modal-sheet { width:100%; max-width:430px; margin:0 auto; background:#fff; border-radius:var(--radius-lg) var(--radius-lg) 0 0; padding:20px 16px 32px; max-height:90vh; overflow-y:auto; }
+.modal-title { font-size:16px; font-weight:700; margin-bottom:14px; }
+.type-selector { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+.type-option { padding:10px 8px; border-radius:var(--radius); border:2px solid var(--border); background:#fff; text-align:center; cursor:pointer; font-size:13px; font-weight:600; font-family:var(--font); color:var(--text-sub); }
+.type-option.selected { border-color:var(--green-400); background:var(--green-50); color:var(--green-600); }
+.form-fields { display:flex; flex-direction:column; gap:10px; }
+.field-row label { display:block; font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:4px; }
+.field-row input,
+.field-row textarea { width:100%; padding:8px 10px; border:1.5px solid var(--border-md); border-radius:var(--radius); font-size:14px; font-family:var(--font); }
+.modal-submit-btn { width:100%; min-height:52px; margin-top:16px; border-radius:var(--radius-lg); border:none; background:var(--green-400); color:#fff; font-size:16px; font-weight:700; font-family:var(--font); cursor:pointer; }
+.modal-submit-btn:disabled { opacity:.5; cursor:not-allowed; }
+.modal-cancel-btn { width:100%; min-height:44px; margin-top:8px; border-radius:var(--radius-lg); border:1.5px solid var(--border-md); background:#fff; color:var(--text-sub); font-size:14px; font-weight:600; font-family:var(--font); cursor:pointer; }
+
+.liff-name-badge { background:var(--green-50); border:1px solid var(--green-100); border-radius:var(--radius); padding:8px 12px; font-size:13px; color:var(--green-600); margin-bottom:12px; display:none; }
+.liff-name-badge.show { display:flex; align-items:center; gap:8px; }
+.loading-msg { text-align:center; color:var(--text-hint); padding:32px 0; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="header">
+    <div class="header-logo" style="background:#5C6BC0;">📋</div>
+    <div class="header-text">
+      <div class="header-title">スタッフ掲示板</div>
+      <div class="header-sub">スタッフ間の連絡・共有スペース</div>
+    </div>
+    <a class="header-back" href="../">🏠 ホーム</a>
+  </header>
+
+  <div class="content">
+    <div id="liff-badge" class="liff-name-badge">
+      <span>🟢</span><span id="liff-badge-name"></span><span class="text-hint text-sm">でログイン中</span>
+    </div>
+
+    <div class="board-tabs" id="board-tabs">
+      <button class="board-tab active" data-type="" onclick="filterPosts(this,'')">すべて</button>
+      <button class="board-tab" data-type="notice"   onclick="filterPosts(this,'notice')">📢 お知らせ</button>
+      <button class="board-tab" data-type="handover" onclick="filterPosts(this,'handover')">🔄 申し送り</button>
+      <button class="board-tab" data-type="trouble"  onclick="filterPosts(this,'trouble')">⚠️ トラブル</button>
+      <button class="board-tab" data-type="complete" onclick="filterPosts(this,'complete')">✅ 業務完了</button>
+    </div>
+
+    <div id="feed" class="feed">
+      <div class="loading-msg">読み込み中…</div>
+    </div>
+  </div>
+</div>
+
+<!-- 投稿ボタン -->
+<button class="post-fab" onclick="openModal()" title="投稿する">✏️</button>
+
+<!-- 投稿モーダル -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalIfOutside(event)">
+  <div class="modal-sheet" id="modal-sheet">
+    <div class="modal-title">✏️ 新規投稿</div>
+
+    <div class="type-selector">
+      <button class="type-option selected" data-type="notice"   onclick="selectType(this)">📢 お知らせ</button>
+      <button class="type-option"          data-type="handover" onclick="selectType(this)">🔄 申し送り</button>
+      <button class="type-option"          data-type="trouble"  onclick="selectType(this)">⚠️ トラブル報告</button>
+      <button class="type-option"          data-type="complete" onclick="selectType(this)">✅ 業務完了</button>
+    </div>
+
+    <div class="form-fields" id="form-fields"></div>
+
+    <button class="modal-submit-btn" id="modal-submit-btn" onclick="submitPost()">投稿する</button>
+    <button class="modal-cancel-btn" onclick="closeModal()">キャンセル</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/liff-helper.js"></script>
+<script>
+let lockedName = null;
+let currentType = 'notice';
+let currentFilter = '';
+let allPosts = [];
+
+const TYPE_CONFIG = {
+  notice:   { label:'📢 お知らせ', badge:'badge-notice',   fields:[{id:'content',label:'内容',type:'textarea',rows:4,required:true}] },
+  handover: { label:'🔄 申し送り', badge:'badge-handover', fields:[{id:'content',label:'内容（シフト交代時の連絡など）',type:'textarea',rows:4,required:true}] },
+  trouble:  { label:'⚠️ トラブル', badge:'badge-trouble',  fields:[
+    {id:'time',   label:'発生時刻',  type:'time',     required:false},
+    {id:'place',  label:'発生場所',  type:'text',     placeholder:'スタジオA など', required:false},
+    {id:'content',label:'状況・内容',type:'textarea', rows:3, required:true},
+    {id:'action', label:'対応内容',  type:'textarea', rows:2, required:false},
+  ]},
+  complete: { label:'✅ 業務完了', badge:'badge-complete', fields:[
+    {id:'content',label:'作業名',    type:'text',     required:true},
+    {id:'sub',    label:'完了時刻',  type:'time',     required:false},
+  ]},
+};
+
+LiffHelper.init(LIFF_ID.board, GAS_URL.board, function(name, isLiff) {
+  if (name) {
+    lockedName = name;
+    document.getElementById('liff-badge-name').textContent = name;
+    document.getElementById('liff-badge').classList.add('show');
+  }
+  loadPosts('');
+  renderFormFields();
+});
+
+function filterPosts(btn, type) {
+  document.querySelectorAll('.board-tab').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  currentFilter = type;
+  renderFeed(type);
+}
+
+function loadPosts(type) {
+  const cbName = 'cb_posts_'+Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    allPosts = (res.success && res.data) ? res.data : [];
+    renderFeed(currentFilter);
+  };
+  jsonp(GAS_URL.board, { action:'getPosts' }, cbName);
+}
+
+function renderFeed(typeFilter) {
+  const feed = document.getElementById('feed');
+  const posts = typeFilter ? allPosts.filter(function(p){ return p.type === typeFilter; }) : allPosts;
+  if (!posts.length) {
+    feed.innerHTML = '<div class="loading-msg">投稿がありません</div>';
+    return;
+  }
+  feed.innerHTML = posts.map(function(p){ return renderPostCard(p); }).join('');
+}
+
+function renderPostCard(p) {
+  const cfg = TYPE_CONFIG[p.type] || TYPE_CONFIG.notice;
+  const myName = lockedName || '';
+  const reacted = p.reactions.indexOf(myName) >= 0;
+  const subHtml = p.sub ? '<div class="post-sub">'+escHtml(p.sub)+'</div>' : '';
+  return [
+    '<div class="post-card" id="post-'+p.id+'">',
+    '  <div class="post-header">',
+    '    <span class="post-type-badge '+cfg.badge+'">'+cfg.label+'</span>',
+    '    <span class="post-author">'+escHtml(p.name)+'</span>',
+    '    <span class="post-time">'+escHtml(p.datetime)+'</span>',
+    '  </div>',
+    '  <div class="post-content">'+escHtml(p.content)+'</div>',
+    subHtml,
+    '  <div class="post-footer">',
+    '    <button class="react-btn'+(reacted?' reacted':'') +'" onclick="reactPost(\''+p.id+'\',this)">',
+    '      '+(reacted?'✅ 確認済み':'👍 確認しました'),
+    '    </button>',
+    '    <span class="react-count">'+p.reactions.length+'人確認</span>',
+    '  </div>',
+    '</div>',
+  ].join('');
+}
+
+function reactPost(postId, btn) {
+  const name = lockedName;
+  if (!name) { showToast('ログインが必要です'); return; }
+  if (btn.classList.contains('reacted')) return;
+  btn.classList.add('reacted');
+  btn.textContent = '✅ 確認済み';
+  const card = btn.closest('.post-card');
+  const countEl = card.querySelector('.react-count');
+  const current = parseInt(countEl.textContent)||0;
+  countEl.textContent = (current+1)+'人確認';
+  postNoCors(GAS_URL.board, { action:'reactPost', postId:postId, reactor:name }, function(){});
+}
+
+function openModal() {
+  const now = new Date();
+  document.getElementById('modal-overlay').classList.add('show');
+  const timeField = document.getElementById('field-time');
+  if (timeField) timeField.value = pad(now.getHours())+':'+pad(now.getMinutes());
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('show');
+}
+
+function closeModalIfOutside(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function selectType(btn) {
+  document.querySelectorAll('.type-option').forEach(function(b){ b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  currentType = btn.dataset.type;
+  renderFormFields();
+}
+
+function renderFormFields() {
+  const cfg = TYPE_CONFIG[currentType] || TYPE_CONFIG.notice;
+  const container = document.getElementById('form-fields');
+  container.innerHTML = cfg.fields.map(function(f){
+    const req = f.required ? ' *' : '';
+    let input = '';
+    if (f.type === 'textarea') {
+      input = '<textarea id="field-'+f.id+'" rows="'+(f.rows||3)+'" placeholder="'+(f.placeholder||'')+'"></textarea>';
+    } else {
+      input = '<input type="'+f.type+'" id="field-'+f.id+'" placeholder="'+(f.placeholder||'')+'" />';
+    }
+    return '<div class="field-row"><label>'+f.label+req+'</label>'+input+'</div>';
+  }).join('');
+  if (currentType === 'trouble' || currentType === 'complete') {
+    const now = new Date();
+    const tf = document.getElementById('field-time');
+    if (tf) tf.value = pad(now.getHours())+':'+pad(now.getMinutes());
+  }
+}
+
+function submitPost() {
+  const name = lockedName;
+  if (!name) { showToast('ログインが必要です'); return; }
+  const cfg = TYPE_CONFIG[currentType];
+  const contentEl = document.getElementById('field-content');
+  if (!contentEl || !contentEl.value.trim()) { showToast('内容を入力してください'); return; }
+
+  let content = contentEl.value.trim();
+  let sub = '';
+
+  if (currentType === 'trouble') {
+    const time  = (document.getElementById('field-time')  || {}).value || '';
+    const place = (document.getElementById('field-place') || {}).value.trim() || '';
+    const action= (document.getElementById('field-action')|| {}).value.trim() || '';
+    const lines = [];
+    if (time)   lines.push('【発生時刻】'+time);
+    if (place)  lines.push('【発生場所】'+place);
+    lines.push('【状況】'+content);
+    if (action) lines.push('【対応】'+action);
+    content = lines.join('\n');
+  } else if (currentType === 'complete') {
+    sub = (document.getElementById('field-sub') || {}).value || '';
+    if (sub) sub = '完了時刻: '+sub;
+  }
+
+  const btn = document.getElementById('modal-submit-btn');
+  btn.disabled = true;
+  btn.textContent = '送信中…';
+
+  postNoCors(GAS_URL.board, { action:'submitPost', name:name, type:currentType, content:content, sub:sub }, function() {
+    btn.disabled = false;
+    btn.textContent = '投稿する';
+    closeModal();
+    showToast('投稿しました');
+    loadPosts('');
+  });
+}
+
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function jsonp(url, params, cbName) {
+  const qs = Object.keys(params).map(function(k){ return encodeURIComponent(k)+'='+encodeURIComponent(params[k]); }).join('&');
+  const s = document.createElement('script');
+  s.src = url+'?'+qs+'&callback='+cbName;
+  s.onerror = function(){ cleanup(cbName); if(typeof window[cbName]==='function') window[cbName]({success:false}); };
+  document.head.appendChild(s);
+}
+function cleanup(cbName) {
+  delete window[cbName];
+  document.querySelectorAll('script[src*="'+cbName+'"]').forEach(function(el){el.remove();});
+}
+function postNoCors(url, params, cb) {
+  const form = document.createElement('form');
+  Object.keys(params).forEach(function(k){ const i=document.createElement('input'); i.type='hidden'; i.name=k; i.value=params[k]; form.appendChild(i); });
+  fetch(url, { method:'POST', mode:'no-cors', body:new FormData(form) })
+    .then(function(){ setTimeout(cb,3000); }).catch(function(){ setTimeout(cb,3000); });
+}
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); },2500);
+}
+</script>
+</body>
+</html>
