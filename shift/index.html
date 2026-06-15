@@ -139,7 +139,14 @@
       <div id="conf-detail" class="conf-detail-box hidden">
         <div class="conf-detail-title" id="conf-detail-title"></div>
         <div id="conf-detail-staff"></div>
-        <div id="conf-detail-wish"></div>
+      </div>
+
+      <!-- 自分のシフト状況 -->
+      <div id="my-conf-shifts" class="hidden" style="margin-top:16px;">
+        <div class="section-title" id="my-conf-shifts-title" style="margin-bottom:8px;font-size:13px;"></div>
+        <div class="card" style="padding:12px;">
+          <div id="my-conf-shifts-body"></div>
+        </div>
       </div>
     </div>
 
@@ -464,6 +471,7 @@ function loadConfirmedView() {
     cleanup(cbName);
     confirmedData = (res.success && res.data) ? res.data : {};
     renderConfirmedCalendar();
+    renderMyConfShifts();
   };
   jsonp(GAS_URL.shift, { action:'getConfirmedShift', year:confViewYear, month:confViewMonth }, cbName);
 }
@@ -512,6 +520,7 @@ function changeConfMonth(delta) {
   if (confViewMonth < 1)  { confViewMonth=12; confViewYear--; }
   selectedConfDate = null;
   document.getElementById('conf-detail').classList.add('hidden');
+  document.getElementById('my-conf-shifts').classList.add('hidden');
   loadConfirmedView();
 }
 
@@ -522,29 +531,38 @@ function showConfirmedDetail(date) {
   document.getElementById('conf-detail-title').textContent =
     parseInt(parts[1])+'月'+parseInt(parts[2])+'日 の確定シフト';
   const staffEl = document.getElementById('conf-detail-staff');
-  const wishEl  = document.getElementById('conf-detail-wish');
   const confirmed = confirmedData[date] || [];
   staffEl.innerHTML = confirmed.map(function(e) {
     return '<div class="staff-confirmed-row"><span class="chip chip-green">'+esc(e.name)+'</span><span class="text-sm text-hint">（'+esc(e.type||'業務')+'）</span></div>';
   }).join('') || '<p class="text-sm text-hint">担当なし</p>';
-  wishEl.innerHTML = '<div class="text-sm text-hint mt-8" style="margin-bottom:6px;">スタッフの希望状況：</div>';
-  const cbName = 'cb_wv_'+Date.now();
-  window[cbName] = function(res) {
-    cleanup(cbName);
-    if (!res.success || !res.data || !res.data[date]) {
-      wishEl.innerHTML += '<p class="text-sm text-hint">希望データなし</p>';
-    } else {
-      const d = res.data[date];
-      let html = '';
-      if ((d.ok||[]).length)    html += '<div>'+(d.ok||[]).map(function(n){return '<span class="chip chip-green">○ '+esc(n)+'</span>';}).join('')+'</div>';
-      if ((d.maybe||[]).length) html += '<div>'+(d.maybe||[]).map(function(n){return '<span class="chip chip-amber">△ '+esc(n)+'</span>';}).join('')+'</div>';
-      if ((d.ng||[]).length)    html += '<div>'+(d.ng||[]).map(function(n){return '<span class="chip chip-red">✕ '+esc(n)+'</span>';}).join('')+'</div>';
-      wishEl.innerHTML += html || '<p class="text-sm text-hint">希望データなし</p>';
-    }
-  };
-  jsonp(GAS_URL.shift, { action:'getShiftRequests', year:parts[0], month:parseInt(parts[1],10) }, cbName);
   document.getElementById('conf-detail').classList.remove('hidden');
   document.getElementById('conf-detail').scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function renderMyConfShifts() {
+  const name = getSelectedName();
+  const panel = document.getElementById('my-conf-shifts');
+  if (!name) { panel.classList.add('hidden'); return; }
+  const myDates = [];
+  Object.keys(confirmedData).sort().forEach(function(date) {
+    (confirmedData[date] || []).forEach(function(e) {
+      if (e.name === name) myDates.push({ date: date, type: e.type });
+    });
+  });
+  document.getElementById('my-conf-shifts-title').textContent =
+    name + ' さんの確定シフト（' + confViewYear + '年' + confViewMonth + '月）';
+  const bodyEl = document.getElementById('my-conf-shifts-body');
+  if (myDates.length === 0) {
+    bodyEl.innerHTML = '<p class="text-sm text-hint" style="padding:4px 0;">確定シフトはありません</p>';
+  } else {
+    bodyEl.innerHTML = myDates.map(function(item) {
+      const dp = item.date.split('-');
+      return '<div class="staff-confirmed-row"><span class="chip chip-green">'+
+        parseInt(dp[1],10)+'月'+parseInt(dp[2],10)+'日</span>'+
+        '<span class="text-sm text-hint">（'+esc(item.type||'業務')+'）</span></div>';
+    }).join('');
+  }
+  panel.classList.remove('hidden');
 }
 
 // ===== ユーティリティ =====

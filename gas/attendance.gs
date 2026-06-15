@@ -32,17 +32,26 @@ function getSheet(name) {
   return s;
 }
 function getSettingMap() {
-  const sheet = getSheet('管理者設定');
+  const ss    = openSS();
+  const tz    = ss.getSpreadsheetTimeZone();
+  const sheet = ss.getSheetByName('管理者設定');
+  if (!sheet) throw new Error('シートが見つかりません: 管理者設定');
   const rows  = sheet.getDataRange().getValues();
   const map   = {};
   for (let i = 1; i < rows.length; i++) {
     let v = rows[i][1];
     if (v instanceof Date) {
-      v = String(v.getHours()).padStart(2,'0') + ':' + String(v.getMinutes()).padStart(2,'0');
+      const hhmm = Utilities.formatDate(v, tz, 'HH:mm');
+      v = (hhmm === '00:00') ? Utilities.formatDate(v, tz, 'yyyy-MM-dd') : hhmm;
     }
     map[rows[i][0]] = v;
   }
   return map;
+}
+function applyTemplate(template, vars) {
+  let s = template || '';
+  Object.keys(vars).forEach(function(k) { s = s.split('{'+k+'}').join(vars[k]); });
+  return s;
 }
 function staffName(row) { return (row[2]&&String(row[2]).trim()) ? String(row[2]).trim() : String(row[1]).trim(); }
 function isEnabled(row) { return row[4] === true || row[4] === 'TRUE'; }
@@ -77,20 +86,27 @@ function submitAttendance(params) {
   const ccList     = (setting['cc_emails']||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
   const sheet = getSheet('出退勤記録');
   const rows  = sheet.getDataRange().getValues();
+  const vars  = { name: name, time: timeStr };
   if (type === 'in') {
     sheet.appendRow([name, now, '']);
-    if (adminEmail) MailApp.sendEmail({ to: adminEmail, cc: ccList.join(','),
-      subject: '【出勤】'+name+'さんが出勤しました（'+timeStr+'）',
-      body: 'スタッフ名：'+name+'\n日時：'+now.toLocaleString('ja-JP') });
+    if (adminEmail) {
+      const tmplIn  = setting['template_attendance_in'] || '';
+      const subject = tmplIn ? applyTemplate(tmplIn, vars) : '【出勤】'+name+'さんが出勤しました（'+timeStr+'）';
+      MailApp.sendEmail({ to: adminEmail, cc: ccList.join(','), subject: subject,
+        body: 'スタッフ名：'+name+'\n日時：'+now.toLocaleString('ja-JP') });
+    }
   } else if (type === 'out') {
     let updated = false;
     for (let i = rows.length-1; i >= 1; i--) {
       if (rows[i][0] === name && !rows[i][2]) { sheet.getRange(i+1,3).setValue(now); updated = true; break; }
     }
     if (!updated) sheet.appendRow([name, '', now]);
-    if (adminEmail) MailApp.sendEmail({ to: adminEmail, cc: ccList.join(','),
-      subject: '【退勤】'+name+'さんが退勤しました（'+timeStr+'）',
-      body: 'スタッフ名：'+name+'\n日時：'+now.toLocaleString('ja-JP') });
+    if (adminEmail) {
+      const tmplOut = setting['template_attendance_out'] || '';
+      const subject = tmplOut ? applyTemplate(tmplOut, vars) : '【退勤】'+name+'さんが退勤しました（'+timeStr+'）';
+      MailApp.sendEmail({ to: adminEmail, cc: ccList.join(','), subject: subject,
+        body: 'スタッフ名：'+name+'\n日時：'+now.toLocaleString('ja-JP') });
+    }
   }
   return { success: true, time: timeStr, type: type };
 }

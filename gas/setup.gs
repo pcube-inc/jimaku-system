@@ -59,14 +59,18 @@ function getSheet(name) {
   return s;
 }
 function getSettingMap() {
-  const sheet = getSheet('管理者設定');
+  const ss    = openSS();
+  const tz    = ss.getSpreadsheetTimeZone();
+  const sheet = ss.getSheetByName('管理者設定');
+  if (!sheet) throw new Error('シートが見つかりません: 管理者設定');
   const rows  = sheet.getDataRange().getValues();
   const map   = {};
   for (let i = 1; i < rows.length; i++) {
     let v = rows[i][1];
-    // Google Sheetsが時刻文字列をDateに変換する問題を修正
     if (v instanceof Date) {
-      v = String(v.getHours()).padStart(2,'0') + ':' + String(v.getMinutes()).padStart(2,'0');
+      // スプレッドシートのタイムゾーンで変換（JST環境でのズレを防ぐ）
+      const hhmm = Utilities.formatDate(v, tz, 'HH:mm');
+      v = (hhmm === '00:00') ? Utilities.formatDate(v, tz, 'yyyy-MM-dd') : hhmm;
     }
     map[rows[i][0]] = v;
   }
@@ -129,9 +133,20 @@ function updateSettings(params) {
   Object.keys(params).filter(function(k){ return k !== 'action'; }).forEach(function(key) {
     let found = false;
     for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] === key) { sheet.getRange(i+1,2).setValue(params[key]); found = true; break; }
+      if (rows[i][0] === key) {
+        const cell = sheet.getRange(i+1, 2);
+        cell.setNumberFormat('@');  // テキスト形式を強制（日付への自動変換を防ぐ）
+        cell.setValue(params[key]);
+        found = true; break;
+      }
     }
-    if (!found) sheet.appendRow([key, params[key]]);
+    if (!found) {
+      const newRow = sheet.getLastRow() + 1;
+      sheet.getRange(newRow, 1).setValue(key);
+      const cell = sheet.getRange(newRow, 2);
+      cell.setNumberFormat('@');
+      cell.setValue(params[key]);
+    }
     if (triggerKeys.indexOf(key) >= 0) triggerChanged = true;
   });
   return { success: true, triggerChanged: triggerChanged };

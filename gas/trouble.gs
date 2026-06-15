@@ -33,13 +33,17 @@ function getSheet(name) {
   return s;
 }
 function getSettingMap() {
-  const sheet = getSheet('管理者設定');
+  const ss    = openSS();
+  const tz    = ss.getSpreadsheetTimeZone();
+  const sheet = ss.getSheetByName('管理者設定');
+  if (!sheet) throw new Error('シートが見つかりません: 管理者設定');
   const rows  = sheet.getDataRange().getValues();
   const map   = {};
   for (let i = 1; i < rows.length; i++) {
     let v = rows[i][1];
     if (v instanceof Date) {
-      v = String(v.getHours()).padStart(2,'0') + ':' + String(v.getMinutes()).padStart(2,'0');
+      const hhmm = Utilities.formatDate(v, tz, 'HH:mm');
+      v = (hhmm === '00:00') ? Utilities.formatDate(v, tz, 'yyyy-MM-dd') : hhmm;
     }
     map[rows[i][0]] = v;
   }

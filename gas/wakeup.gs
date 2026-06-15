@@ -34,13 +34,17 @@ function getSheet(name) {
   return s;
 }
 function getSettingMap() {
-  const sheet = getSheet('管理者設定');
+  const ss    = openSS();
+  const tz    = ss.getSpreadsheetTimeZone();
+  const sheet = ss.getSheetByName('管理者設定');
+  if (!sheet) throw new Error('シートが見つかりません: 管理者設定');
   const rows  = sheet.getDataRange().getValues();
   const map   = {};
   for (let i = 1; i < rows.length; i++) {
     let v = rows[i][1];
     if (v instanceof Date) {
-      v = String(v.getHours()).padStart(2,'0') + ':' + String(v.getMinutes()).padStart(2,'0');
+      const hhmm = Utilities.formatDate(v, tz, 'HH:mm');
+      v = (hhmm === '00:00') ? Utilities.formatDate(v, tz, 'yyyy-MM-dd') : hhmm;
     }
     map[rows[i][0]] = v;
   }
@@ -219,8 +223,9 @@ function sendWakeupReminder() {
 function checkUnconfirmed() {
   const today      = todayStr();
   const setting    = getSettingMap();
-  const adminEmail = setting['admin_email'] || '';
-  const ccEmails   = setting['cc_emails']   || '';
+  // 起床確認は専用アドレスを使用（未設定時は通常アドレスにフォールバック）
+  const adminEmail = setting['wakeup_admin_email'] || setting['admin_email'] || '';
+  const ccEmails   = setting['wakeup_cc_emails']   || setting['cc_emails']   || '';
   const deadline   = timeStr(setting['wakeup_deadline'] || '08:00');
   const template   = setting['template_wakeup_unconfirmed'] || '{name}さんの起床確認ボタンが押されていません';
 

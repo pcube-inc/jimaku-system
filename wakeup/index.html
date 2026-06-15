@@ -12,9 +12,12 @@
 .wakeup-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
 .wakeup-icon { font-size:24px; }
 .sent-msg { text-align:center; padding:24px 0; font-size:16px; color:var(--green-600); font-weight:600; }
-.no-shift-msg { text-align:center; padding:32px 16px; color:var(--text-hint); font-size:15px; }
 .liff-name-badge { background:var(--green-50); border:1px solid var(--green-100); border-radius:var(--radius); padding:8px 12px; font-size:13px; color:var(--green-600); margin-bottom:12px; display:none; }
 .liff-name-badge.show { display:flex; align-items:center; gap:8px; }
+.status-msg { margin-top:16px; padding:16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; text-align:center; }
+.status-no-shift { background:var(--gray-100); color:var(--text-hint); }
+.status-past-deadline { background:var(--amber-50); color:var(--amber-600); border:1px solid rgba(245,158,11,.3); }
+.status-already-sent { background:var(--green-50); color:var(--green-600); border:1px solid rgba(29,158,117,.2); }
 </style>
 </head>
 <body>
@@ -41,6 +44,8 @@
     </div>
 
     <div id="error-msg" class="error-msg"></div>
+
+    <div id="status-area" class="hidden"></div>
 
     <div id="btn-area" class="hidden">
       <div class="wakeup-btn-group">
@@ -70,7 +75,7 @@ LiffHelper.init(LIFF_ID.wakeup, GAS_URL.wakeup, function(name, isLiff) {
     document.getElementById('liff-badge-name').textContent = name;
     document.getElementById('liff-badge').classList.add('show');
     document.getElementById('staff-select-wrap').classList.add('hidden');
-    document.getElementById('btn-area').classList.remove('hidden');
+    checkShift(name);
   } else {
     loadStaffNames();
   }
@@ -94,14 +99,51 @@ function onStaffChange() {
   const name = document.getElementById('staff-name').value;
   document.getElementById('error-msg').classList.remove('show');
   document.getElementById('sent-area').classList.add('hidden');
-  if (!name) {
-    document.getElementById('btn-area').classList.add('hidden');
-    return;
-  }
-  document.getElementById('btn-area').classList.remove('hidden');
-  const btn = document.getElementById('wakeup-btn');
-  btn.disabled = false;
-  btn.innerHTML = '<span class="wakeup-icon">🌄</span><span>起床</span>';
+  document.getElementById('btn-area').classList.add('hidden');
+  document.getElementById('status-area').classList.add('hidden');
+  if (!name) return;
+  checkShift(name);
+}
+
+function checkShift(name) {
+  document.getElementById('btn-area').classList.add('hidden');
+  document.getElementById('status-area').classList.add('hidden');
+  const cbName = 'cb_shift_'+Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    if (!res.success || !res.data) { showError('シフト確認に失敗しました'); return; }
+    const data = res.data;
+    if (!data.onShift) {
+      showStatus('no-shift', '本日はシフト対象外のため、起床確認は不要です。');
+      return;
+    }
+    // 期限チェック
+    const now = new Date();
+    const dlParts = (data.deadline || '08:00').split(':');
+    const deadlineDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(),
+      parseInt(dlParts[0], 10), parseInt(dlParts[1] || '0', 10), 0);
+    if (now > deadlineDate) {
+      showStatus('past-deadline', '起床確認の期限（' + data.deadline + '）を過ぎています。\n担当者に連絡してください。');
+      return;
+    }
+    // 送信済みチェック
+    if (data.pressedAt) {
+      showStatus('already-sent', '本日はすでに送信済みです。（' + data.pressedAt + '）');
+      return;
+    }
+    // ボタン表示
+    const btn = document.getElementById('wakeup-btn');
+    btn.disabled = false;
+    btn.innerHTML = '<span class="wakeup-icon">🌄</span><span>起床</span>';
+    document.getElementById('btn-area').classList.remove('hidden');
+  };
+  jsonp(GAS_URL.wakeup, { action:'checkTodayShift', name:name }, cbName);
+}
+
+function showStatus(type, msg) {
+  const area = document.getElementById('status-area');
+  area.textContent = msg;
+  area.className = 'status-msg status-' + type;
 }
 
 function submitWakeup() {

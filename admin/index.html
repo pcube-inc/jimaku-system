@@ -100,6 +100,19 @@
           <label class="form-label">CCメールアドレス（1行1アドレス）</label>
           <textarea id="cc_emails" class="form-control" rows="3" placeholder="cc1@example.com&#10;cc2@example.com"></textarea>
         </div>
+
+        <hr class="divider mt-16">
+        <div class="section-title">起床確認メール（別送り先）</div>
+        <p class="text-sm text-hint" style="margin-bottom:12px;">空欄の場合は上記「管理者メール・CC」が使用されます</p>
+        <div class="form-group">
+          <label class="form-label">起床確認メール宛先</label>
+          <input type="email" id="wakeup_admin_email" class="form-control" placeholder="空欄＝通知設定と同じ">
+        </div>
+        <div class="form-group">
+          <label class="form-label">起床確認メールCC（1行1アドレス）</label>
+          <textarea id="wakeup_cc_emails" class="form-control" rows="2" placeholder="空欄＝通知設定と同じ"></textarea>
+        </div>
+
         <div class="form-group">
           <label class="form-label">起床確認リマインダーの時刻</label>
           <input type="time" id="wakeup_reminder_time" class="form-control" oninput="document.getElementById('wakeup_reminder_time_jp').textContent=fmtTimeJP(this.value)">
@@ -366,6 +379,8 @@ function loadSettings() {
     const d = res.data;
     setVal('admin_email',         d.admin_email      || '');
     setVal('cc_emails',           (d.cc_emails||'').replace(/,/g,'\n'));
+    setVal('wakeup_admin_email',  d.wakeup_admin_email || '');
+    setVal('wakeup_cc_emails',    (d.wakeup_cc_emails||'').replace(/,/g,'\n'));
     setVal('wakeup_reminder_time', d.wakeup_reminder_time || '07:00');
     setVal('wakeup_deadline',      d.wakeup_deadline  || '08:00');
     setJPHint('wakeup_reminder_time_jp', fmtTimeJP(d.wakeup_reminder_time || '07:00'));
@@ -388,13 +403,16 @@ function saveSettings() {
   errEl.classList.remove('show'); sucEl.classList.remove('show');
   if (newPw && newPw !== confPw) { errEl.textContent='パスワードが一致しません'; errEl.classList.add('show'); return; }
   const ccRaw = document.getElementById('cc_emails').value.split('\n').map(function(s){return s.trim();}).filter(Boolean).join(',');
+  const wakeupCcRaw = document.getElementById('wakeup_cc_emails').value.split('\n').map(function(s){return s.trim();}).filter(Boolean).join(',');
   const data = {
     action:'updateSettings',
-    admin_email:        document.getElementById('admin_email').value,
-    cc_emails:          ccRaw,
+    admin_email:         document.getElementById('admin_email').value,
+    cc_emails:           ccRaw,
+    wakeup_admin_email:  document.getElementById('wakeup_admin_email').value,
+    wakeup_cc_emails:    wakeupCcRaw,
     wakeup_reminder_time: document.getElementById('wakeup_reminder_time').value,
     wakeup_deadline:      document.getElementById('wakeup_deadline').value,
-    line_channel_token: document.getElementById('line_channel_token').value,
+    line_channel_token:  document.getElementById('line_channel_token').value,
   };
   if (newPw) data.admin_password = newPw;
   const btn = document.getElementById('save-settings-btn');
