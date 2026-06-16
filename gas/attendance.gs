@@ -55,7 +55,12 @@ function applyTemplate(template, vars) {
   return s;
 }
 function staffName(row) { return (row[2]&&String(row[2]).trim()) ? String(row[2]).trim() : String(row[1]).trim(); }
-function isEnabled(row) { return row[4] === true || row[4] === 'TRUE'; }
+function isEnabled(row) {
+  const v = row[4];
+  if (v === false || v === 'FALSE') return false;
+  if (v === null || v === undefined || v === '') return true;
+  return v === true || v === 'TRUE' || v === 'true' || v === 1 || v === '1';
+}
 
 function getSettingsPublic() {
   const map = getSettingMap();
