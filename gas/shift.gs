@@ -61,9 +61,11 @@ function doPost(e) {
     else if (action === 'addStaff')        result = addStaff(e.parameter);
     else if (action === 'deleteStaff')     result = deleteStaff(e.parameter);
     else if (action === 'registerLineId')  result = registerLineId(e.parameter);
-    else if (action === 'sendLineMessage')    result = sendLineMessageAction(e.parameter);
-    else if (action === 'cleanupSettings')   result = cleanupSettings();
-    else if (action === 'createCalendarSheet') result = createCalendarSheet(e.parameter);
+    else if (action === 'sendLineMessage')         result = sendLineMessageAction(e.parameter);
+    else if (action === 'cleanupSettings')         result = cleanupSettings();
+    else if (action === 'createCalendarSheet')     result = createCalendarSheet(e.parameter);
+    else if (action === 'deleteConfirmedEntry')    result = deleteConfirmedEntry(e.parameter);
+    else if (action === 'updateConfirmedEntryType') result = updateConfirmedEntryType(e.parameter);
     else result = { success: false, error: 'unknown action' };
   } catch(err) {
     result = { success: false, error: err.message };
@@ -273,6 +275,35 @@ function confirmShift(params) {
   });
 
   return { success: true };
+}
+
+function deleteConfirmedEntry(params) {
+  const date = params.date;
+  const name = params.name;
+  const sheet = getSheet('シフト確定');
+  const rows  = sheet.getDataRange().getValues();
+  for (let i = rows.length - 1; i >= 1; i--) {
+    if (dateStr(rows[i][0]) === date && rows[i][1] === name) {
+      sheet.deleteRow(i + 1);
+      return { success: true };
+    }
+  }
+  return { success: false, error: 'entry not found' };
+}
+
+function updateConfirmedEntryType(params) {
+  const date    = params.date;
+  const name    = params.name;
+  const newType = params.newType;
+  const sheet = getSheet('シフト確定');
+  const rows  = sheet.getDataRange().getValues();
+  for (let i = rows.length - 1; i >= 1; i--) {
+    if (dateStr(rows[i][0]) === date && rows[i][1] === name) {
+      sheet.getRange(i + 1, 3).setValue(newType);
+      return { success: true };
+    }
+  }
+  return { success: false, error: 'entry not found' };
 }
 
 function updateSettings(params) {

@@ -101,10 +101,11 @@ function submitAttendance(params) {
   if (type === 'in') {
     sheet.appendRow([name, now, '']);
     if (adminEmail) {
-      const tmplIn  = setting['template_attendance_in'] || '';
+      const tmplIn      = setting['template_attendance_in']      || '';
+      const tmplInBody  = setting['template_attendance_in_body'] || '';
       const subject = tmplIn ? applyTemplate(tmplIn, vars) : '【出勤】'+name+'さんが出勤しました（'+timeStr+'）';
-      MailApp.sendEmail({ to: adminEmail, cc: ccList.join(','), subject: subject,
-        body: 'スタッフ名：'+name+'\n日時：'+now.toLocaleString('ja-JP') });
+      const body    = tmplInBody ? applyTemplate(tmplInBody, vars) : 'スタッフ名：'+name+'\n日時：'+now.toLocaleString('ja-JP');
+      MailApp.sendEmail({ to: adminEmail, cc: ccList.join(','), subject: subject, body: body });
     }
   } else if (type === 'out') {
     let updated = false;
@@ -113,10 +114,11 @@ function submitAttendance(params) {
     }
     if (!updated) sheet.appendRow([name, '', now]);
     if (adminEmail) {
-      const tmplOut = setting['template_attendance_out'] || '';
+      const tmplOut     = setting['template_attendance_out']      || '';
+      const tmplOutBody = setting['template_attendance_out_body'] || '';
       const subject = tmplOut ? applyTemplate(tmplOut, vars) : '【退勤】'+name+'さんが退勤しました（'+timeStr+'）';
-      MailApp.sendEmail({ to: adminEmail, cc: ccList.join(','), subject: subject,
-        body: 'スタッフ名：'+name+'\n日時：'+now.toLocaleString('ja-JP') });
+      const body    = tmplOutBody ? applyTemplate(tmplOutBody, vars) : 'スタッフ名：'+name+'\n日時：'+now.toLocaleString('ja-JP');
+      MailApp.sendEmail({ to: adminEmail, cc: ccList.join(','), subject: subject, body: body });
     }
   }
   return { success: true, time: timeStr, type: type };

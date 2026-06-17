@@ -109,10 +109,8 @@ function submitPost(params) {
   const id      = String(now.getTime());
   getSheet('掲示板').appendRow([id, name, type, now, content, sub, '']);
 
-  // トラブル報告はLINE通知
-  if (type === 'trouble') {
-    sendLineNotification(name, content);
-  }
+  // 全投稿種別でLINE通知
+  sendLineNotification(name, type, content);
   return { success: true, id: id };
 }
 
@@ -134,11 +132,13 @@ function reactPost(params) {
   return { success: false, error: 'post not found' };
 }
 
-function sendLineNotification(name, content) {
+function sendLineNotification(name, type, content) {
   const setting = getSettingMap();
   const token   = setting['line_channel_token'] || '';
   if (!token) return;
-  const message = '⚠️ 【掲示板トラブル報告】\nスタッフ：'+name+'\n\n'+content;
+  const typeLabels = { notice: '📢 お知らせ', handover: '🔄 申し送り', trouble: '⚠️ トラブル報告', done: '✅ 業務完了' };
+  const label   = typeLabels[type] || type;
+  const message = label+'\nスタッフ：'+name+'\n\n'+content;
   try {
     UrlFetchApp.fetch('https://api.line.me/v2/bot/message/broadcast', {
       method: 'post',

@@ -274,12 +274,20 @@
           <textarea id="template_wakeup_unconfirmed" class="form-control" rows="3" placeholder="例：{name}さんの起床確認ボタンが押されていません"></textarea>
         </div>
         <div class="form-group">
-          <label class="form-label">🏢 出勤通知（管理者メール件名テンプレート）</label>
-          <textarea id="template_attendance_in" class="form-control" rows="3" placeholder="例：【出勤】{name}さんが出勤しました（{time}）"></textarea>
+          <label class="form-label">🏢 出勤通知 件名</label>
+          <textarea id="template_attendance_in" class="form-control" rows="2" placeholder="例：【出勤】{name}さんが出勤しました（{time}）"></textarea>
         </div>
         <div class="form-group">
-          <label class="form-label">🏠 退勤通知（管理者メール件名テンプレート）</label>
-          <textarea id="template_attendance_out" class="form-control" rows="3" placeholder="例：【退勤】{name}さんが退勤しました（{time}）"></textarea>
+          <label class="form-label">🏢 出勤通知 本文</label>
+          <textarea id="template_attendance_in_body" class="form-control" rows="3" placeholder="空白の場合はデフォルト本文を使用"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">🏠 退勤通知 件名</label>
+          <textarea id="template_attendance_out" class="form-control" rows="2" placeholder="例：【退勤】{name}さんが退勤しました（{time}）"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">🏠 退勤通知 本文</label>
+          <textarea id="template_attendance_out_body" class="form-control" rows="3" placeholder="空白の場合はデフォルト本文を使用"></textarea>
         </div>
         <button class="btn btn-primary" onclick="saveTemplates()">定型文を保存</button>
       </div>
@@ -811,10 +819,14 @@ function showAdminConfDetail(date) {
   const staffEl = document.getElementById('admin-conf-detail-staff');
   const entries = adminConfData[date] || [];
   if (entries.length) {
-    staffEl.innerHTML = entries.map(function(e) {
-      return '<div class="staff-confirmed-row">'+
-        '<span class="chip chip-green">'+esc(e.name)+'</span>'+
-        '<span class="text-sm text-hint">（'+esc(e.type||'業務')+'）</span>'+
+    staffEl.innerHTML = entries.map(function(e, idx) {
+      return '<div class="staff-confirmed-row" id="conf-row-'+idx+'" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">'+
+        '<span class="chip chip-green" style="flex:1;">'+esc(e.name)+'</span>'+
+        '<select class="form-control" style="width:auto;min-width:80px;font-size:12px;padding:4px 6px;" id="conf-type-'+idx+'">'+
+          ['業務','副業務','見習い'].map(function(t){ return '<option'+(e.type===t?' selected':'')+'>'+t+'</option>'; }).join('')+
+        '</select>'+
+        '<button class="btn" style="background:var(--green-400);color:#fff;font-size:11px;padding:4px 8px;width:auto;" onclick="saveConfirmedEntry(\''+esc(date)+'\',\''+esc(e.name)+'\','+idx+')">保存</button>'+
+        '<button class="btn" style="background:#ef5350;color:#fff;font-size:11px;padding:4px 8px;width:auto;" onclick="deleteConfirmedEntry(\''+esc(date)+'\',\''+esc(e.name)+'\','+idx+')">削除</button>'+
         '</div>';
     }).join('');
   } else {
@@ -834,6 +846,29 @@ function sendLineShiftMessage() {
   postNoCors(GAS_URL.shift, { action:'sendLineMessage', text:'シフトが確定しました' }, function() {
     if (btn) { btn.disabled = false; btn.textContent = '今すぐ送信'; }
     if (resEl) { resEl.textContent='📨 LINEに送信しました'; resEl.classList.add('show'); }
+  });
+}
+
+function saveConfirmedEntry(date, name, idx) {
+  const newType = document.getElementById('conf-type-'+idx).value;
+  postNoCors(GAS_URL.shift, { action:'updateConfirmedEntryType', date:date, name:name, newType:newType }, function() {
+    if (adminConfData[date]) {
+      const entry = adminConfData[date].find(function(e){ return e.name===name; });
+      if (entry) entry.type = newType;
+    }
+    showToast('更新しました');
+  });
+}
+
+function deleteConfirmedEntry(date, name, idx) {
+  if (!window.confirm(name+' を '+date+' のシフトから削除しますか？')) return;
+  postNoCors(GAS_URL.shift, { action:'deleteConfirmedEntry', date:date, name:name }, function() {
+    if (adminConfData[date]) {
+      adminConfData[date] = adminConfData[date].filter(function(e){ return e.name!==name; });
+    }
+    showAdminConfDetail(date);
+    renderAdminConfCalendar();
+    showToast('削除しました');
   });
 }
 
@@ -1048,8 +1083,10 @@ function loadTemplates() {
     const d = res.data;
     setVal('template_wakeup',              d.template_wakeup              || '');
     setVal('template_wakeup_unconfirmed',  d.template_wakeup_unconfirmed  || '');
-    setVal('template_attendance_in',   d.template_attendance_in   || '');
-    setVal('template_attendance_out',  d.template_attendance_out  || '');
+    setVal('template_attendance_in',       d.template_attendance_in       || '');
+    setVal('template_attendance_in_body',  d.template_attendance_in_body  || '');
+    setVal('template_attendance_out',      d.template_attendance_out      || '');
+    setVal('template_attendance_out_body', d.template_attendance_out_body || '');
   };
   jsonp(GAS_URL.admin, { action:'getSettings' }, cbName);
 }
@@ -1059,10 +1096,12 @@ function saveTemplates() {
   sucEl.classList.remove('show');
   postNoCors(GAS_URL.admin, {
     action:                   'updateSettings',
-    template_wakeup:              document.getElementById('template_wakeup').value,
-    template_wakeup_unconfirmed:  document.getElementById('template_wakeup_unconfirmed').value,
-    template_attendance_in:   document.getElementById('template_attendance_in').value,
-    template_attendance_out:  document.getElementById('template_attendance_out').value,
+    template_wakeup:               document.getElementById('template_wakeup').value,
+    template_wakeup_unconfirmed:   document.getElementById('template_wakeup_unconfirmed').value,
+    template_attendance_in:        document.getElementById('template_attendance_in').value,
+    template_attendance_in_body:   document.getElementById('template_attendance_in_body').value,
+    template_attendance_out:       document.getElementById('template_attendance_out').value,
+    template_attendance_out_body:  document.getElementById('template_attendance_out_body').value,
   }, function() {
     sucEl.textContent='保存しました'; sucEl.classList.add('show');
     showToast('定型文を保存しました');
