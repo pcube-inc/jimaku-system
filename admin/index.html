@@ -605,7 +605,7 @@ function renderInputEntries(date) {
 function addInputEntry() {
   if (!selectedInputDate) return;
   if (!confEntries[selectedInputDate]) confEntries[selectedInputDate] = [];
-  confEntries[selectedInputDate].push({name:'', type:'業務A'});
+  confEntries[selectedInputDate].push({name:'', type:'---'});
   renderInputEntries(selectedInputDate);
   renderInputCalendar();
 }
@@ -633,7 +633,7 @@ function autoGenerate() {
         confEntries[date] = [{ name: candidates[0], type: '業務A' }];
       } else {
         // 候補なし：空エントリ1件で仮作成
-        confEntries[date] = [{ name:'', type:'業務A' }];
+        confEntries[date] = [{ name:'', type:'---' }];
         // 本当に全員✕（ngに誰かいる）場合のみ警告
         if (d && (d.ng||[]).length > 0) {
           allNgDates.push(fmtDateJP(date));
@@ -666,10 +666,10 @@ function renderShiftTypeList() {
   container.classList.remove('hidden');
   wrap.innerHTML = '';
   dates.forEach(function(date) {
-    if (!confEntries[date]) confEntries[date] = [{ name:'', type:'業務A' }];
+    if (!confEntries[date]) confEntries[date] = [{ name:'', type:'---' }];
     const entries = confEntries[date];
     // エントリが空の場合は空行を1件追加
-    if (!entries.length) entries.push({ name:'', type:'業務A' });
+    if (!entries.length) entries.push({ name:'', type:'---' });
     const label = fmtDateJP(date);
     entries.forEach(function(entry, idx) {
       const row = document.createElement('div');
@@ -692,8 +692,9 @@ function renderShiftTypeList() {
         '</select>'+
         '<select style="width:88px;font-size:13px;padding:3px 6px;border:1.5px solid var(--border-md);border-radius:var(--radius);margin-right:4px;" '+
           'onchange="confEntries[\''+date+'\']['+idx+'].type=this.value;">'+
-          '<option value="業務A"'+(entry.type==='業務A'?' selected':'')+'>業務A</option>'+
-          '<option value="業務B"'+(entry.type==='業務B'?' selected':'')+'>業務B</option>'+
+          '<option value="---"'+(entry.type==='---'?' selected':'')+'>---</option>'+
+          '<option value="リスピーク"'+(entry.type==='リスピーク'?' selected':'')+'>リスピーク</option>'+
+          '<option value="もじぱ"'+(entry.type==='もじぱ'?' selected':'')+'>もじぱ</option>'+
           '<option value="研修"'+(entry.type==='研修'?' selected':'')+'>研修</option>'+
         '</select>'+
         actionBtn;
@@ -704,14 +705,14 @@ function renderShiftTypeList() {
 
 function addShiftTypeEntry(date) {
   if (!confEntries[date]) confEntries[date] = [];
-  confEntries[date].push({ name:'', type:'業務A' });
+  confEntries[date].push({ name:'', type:'---' });
   renderShiftTypeList();
   renderInputCalendar();
 }
 
 function delShiftTypeEntry(date, idx) {
   if (!confEntries[date] || confEntries[date].length <= 1) {
-    confEntries[date] = [{ name:'', type:'業務A' }];
+    confEntries[date] = [{ name:'', type:'---' }];
   } else {
     confEntries[date].splice(idx, 1);
   }
@@ -823,7 +824,7 @@ function showAdminConfDetail(date) {
       return '<div class="staff-confirmed-row" id="conf-row-'+idx+'" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">'+
         '<span class="chip chip-green" style="flex:1;">'+esc(e.name)+'</span>'+
         '<select class="form-control" style="width:auto;min-width:80px;font-size:12px;padding:4px 6px;" id="conf-type-'+idx+'">'+
-          ['業務','副業務','見習い'].map(function(t){ return '<option'+(e.type===t?' selected':'')+'>'+t+'</option>'; }).join('')+
+          ['---','リスピーク','もじぱ','研修'].map(function(t){ return '<option'+(e.type===t?' selected':'')+'>'+t+'</option>'; }).join('')+
         '</select>'+
         '<button class="btn" style="background:var(--green-400);color:#fff;font-size:11px;padding:4px 8px;width:auto;" onclick="saveConfirmedEntry(\''+esc(date)+'\',\''+esc(e.name)+'\','+idx+')">保存</button>'+
         '<button class="btn" style="background:#ef5350;color:#fff;font-size:11px;padding:4px 8px;width:auto;" onclick="deleteConfirmedEntry(\''+esc(date)+'\',\''+esc(e.name)+'\','+idx+')">削除</button>'+

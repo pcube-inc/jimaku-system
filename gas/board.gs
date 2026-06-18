@@ -22,6 +22,8 @@ function doPost(e) {
   try {
     if      (action === 'submitPost') result = submitPost(e.parameter);
     else if (action === 'reactPost')  result = reactPost(e.parameter);
+    else if (action === 'deletePost') result = deletePost(e.parameter);
+    else if (action === 'updatePost') result = updatePost(e.parameter);
     else result = { success: false, error: 'unknown action' };
   } catch(err) { result = { success: false, error: err.message }; }
   return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
@@ -132,11 +134,42 @@ function reactPost(params) {
   return { success: false, error: 'post not found' };
 }
 
+function deletePost(params) {
+  const postId = params.postId || '';
+  if (!postId) return { success: false, error: 'postId required' };
+  const sheet = getSheet('掲示板');
+  const rows  = sheet.getDataRange().getValues();
+  for (let i = rows.length - 1; i >= 1; i--) {
+    if (String(rows[i][0]) === postId) {
+      sheet.deleteRow(i + 1);
+      return { success: true };
+    }
+  }
+  return { success: false, error: 'post not found' };
+}
+
+function updatePost(params) {
+  const postId  = params.postId  || '';
+  const content = params.content || '';
+  const sub     = params.sub     || '';
+  if (!postId) return { success: false, error: 'postId required' };
+  const sheet = getSheet('掲示板');
+  const rows  = sheet.getDataRange().getValues();
+  for (let i = rows.length - 1; i >= 1; i--) {
+    if (String(rows[i][0]) === postId) {
+      sheet.getRange(i + 1, 5).setValue(content);
+      sheet.getRange(i + 1, 6).setValue(sub);
+      return { success: true };
+    }
+  }
+  return { success: false, error: 'post not found' };
+}
+
 function sendLineNotification(name, type, content) {
   const setting = getSettingMap();
   const token   = setting['line_channel_token'] || '';
   if (!token) return;
-  const typeLabels = { notice: '📢 お知らせ', handover: '🔄 申し送り', trouble: '⚠️ トラブル報告', done: '✅ 業務完了' };
+  const typeLabels = { notice: '📢 お知らせ', handover: '🔄 申し送り', trouble: '⚠️ トラブル報告', training: '📚 研修報告' };
   const label   = typeLabels[type] || type;
   const message = label+'\nスタッフ：'+name+'\n\n'+content;
   try {

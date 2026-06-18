@@ -23,7 +23,16 @@
 .badge-notice   { background:var(--green-50);  color:var(--green-600); }
 .badge-handover { background:#E3F2FD;           color:#1565C0; }
 .badge-trouble  { background:var(--red-50);     color:var(--red-600); }
-.badge-complete { background:var(--amber-50);   color:var(--amber-600); }
+.badge-training { background:#EDE7F6;             color:#6A1B9A; }
+.post-actions { display:flex; gap:6px; margin-left:auto; }
+.post-action-btn { padding:3px 8px; border-radius:var(--radius-pill); border:1.5px solid var(--border-md); background:#fff; font-size:11px; font-weight:600; cursor:pointer; color:var(--text-sub); font-family:var(--font); }
+.post-action-btn:hover { background:var(--gray-50); }
+.post-action-btn.delete { border-color:rgba(220,38,38,.3); color:var(--red-600); }
+/* 編集モーダル */
+.edit-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:300; display:none; align-items:flex-end; }
+.edit-overlay.show { display:flex; }
+.edit-sheet { width:100%; max-width:430px; margin:0 auto; background:#fff; border-radius:var(--radius-lg) var(--radius-lg) 0 0; padding:20px 16px 32px; max-height:80vh; overflow-y:auto; }
+.edit-sheet .modal-title { font-size:16px; font-weight:700; margin-bottom:14px; }
 .post-author { font-size:13px; font-weight:700; color:var(--text); }
 .post-time { font-size:11px; color:var(--text-hint); margin-left:auto; }
 .post-content { font-size:14px; line-height:1.6; color:var(--text); white-space:pre-wrap; word-break:break-word; }
@@ -75,7 +84,7 @@
       <button class="board-tab" data-type="notice"   onclick="filterPosts(this,'notice')">📢 お知らせ</button>
       <button class="board-tab" data-type="handover" onclick="filterPosts(this,'handover')">🔄 申し送り</button>
       <button class="board-tab" data-type="trouble"  onclick="filterPosts(this,'trouble')">⚠️ トラブル</button>
-      <button class="board-tab" data-type="complete" onclick="filterPosts(this,'complete')">✅ 業務完了</button>
+      <button class="board-tab" data-type="training" onclick="filterPosts(this,'training')">📚 研修報告</button>
     </div>
 
     <div id="feed" class="feed">
@@ -96,13 +105,32 @@
       <button class="type-option selected" data-type="notice"   onclick="selectType(this)">📢 お知らせ</button>
       <button class="type-option"          data-type="handover" onclick="selectType(this)">🔄 申し送り</button>
       <button class="type-option"          data-type="trouble"  onclick="selectType(this)">⚠️ トラブル報告</button>
-      <button class="type-option"          data-type="complete" onclick="selectType(this)">✅ 業務完了</button>
+      <button class="type-option"          data-type="training" onclick="selectType(this)">📚 研修報告</button>
     </div>
 
     <div class="form-fields" id="form-fields"></div>
 
     <button class="modal-submit-btn" id="modal-submit-btn" onclick="submitPost()">投稿する</button>
     <button class="modal-cancel-btn" onclick="closeModal()">キャンセル</button>
+  </div>
+</div>
+
+<!-- 編集モーダル -->
+<div class="edit-overlay" id="edit-overlay" onclick="closeEditIfOutside(event)">
+  <div class="edit-sheet" id="edit-sheet">
+    <div class="modal-title">✏️ 投稿を編集</div>
+    <div class="form-fields">
+      <div class="field-row">
+        <label>内容 *</label>
+        <textarea id="edit-content" rows="5"></textarea>
+      </div>
+      <div class="field-row" id="edit-sub-row">
+        <label id="edit-sub-label">サブ情報</label>
+        <input type="text" id="edit-sub" />
+      </div>
+    </div>
+    <button class="modal-submit-btn" id="edit-submit-btn" onclick="submitEdit()">保存する</button>
+    <button class="modal-cancel-btn" onclick="closeEditModal()">キャンセル</button>
   </div>
 </div>
 
@@ -121,13 +149,12 @@ const TYPE_CONFIG = {
   handover: { label:'🔄 申し送り', badge:'badge-handover', fields:[{id:'content',label:'内容（シフト交代時の連絡など）',type:'textarea',rows:4,required:true}] },
   trouble:  { label:'⚠️ トラブル', badge:'badge-trouble',  fields:[
     {id:'time',   label:'発生時刻',  type:'time',     required:false},
-    {id:'place',  label:'発生場所',  type:'text',     placeholder:'スタジオA など', required:false},
     {id:'content',label:'状況・内容',type:'textarea', rows:3, required:true},
     {id:'action', label:'対応内容',  type:'textarea', rows:2, required:false},
   ]},
-  complete: { label:'✅ 業務完了', badge:'badge-complete', fields:[
-    {id:'content',label:'作業名',    type:'text',     required:true},
-    {id:'sub',    label:'完了時刻',  type:'time',     required:false},
+  training: { label:'📚 研修報告', badge:'badge-training', fields:[
+    {id:'content',label:'研修内容',  type:'textarea', rows:4, required:true},
+    {id:'sub',    label:'担当講師・備考', type:'text', placeholder:'任意', required:false},
   ]},
 };
 
@@ -172,7 +199,14 @@ function renderPostCard(p) {
   const cfg = TYPE_CONFIG[p.type] || TYPE_CONFIG.notice;
   const myName = lockedName || '';
   const reacted = p.reactions.indexOf(myName) >= 0;
+  const isOwner = myName && myName === p.name;
   const subHtml = p.sub ? '<div class="post-sub">'+escHtml(p.sub)+'</div>' : '';
+  const actionBtns = isOwner
+    ? '<div class="post-actions">'+
+        '<button class="post-action-btn" onclick="openEditModal(\''+p.id+'\')">✏️ 編集</button>'+
+        '<button class="post-action-btn delete" onclick="deletePost(\''+p.id+'\')">🗑️ 削除</button>'+
+      '</div>'
+    : '';
   return [
     '<div class="post-card" id="post-'+p.id+'">',
     '  <div class="post-header">',
@@ -187,6 +221,7 @@ function renderPostCard(p) {
     '      '+(reacted?'✅ 確認済み':'👍 確認しました'),
     '    </button>',
     '    <span class="react-count">'+p.reactions.length+'人確認</span>',
+    actionBtns,
     '  </div>',
     '</div>',
   ].join('');
@@ -259,17 +294,14 @@ function submitPost() {
 
   if (currentType === 'trouble') {
     const time  = (document.getElementById('field-time')  || {}).value || '';
-    const place = (document.getElementById('field-place') || {}).value.trim() || '';
     const action= (document.getElementById('field-action')|| {}).value.trim() || '';
     const lines = [];
     if (time)   lines.push('【発生時刻】'+time);
-    if (place)  lines.push('【発生場所】'+place);
     lines.push('【状況】'+content);
     if (action) lines.push('【対応】'+action);
     content = lines.join('\n');
-  } else if (currentType === 'complete') {
-    sub = (document.getElementById('field-sub') || {}).value || '';
-    if (sub) sub = '完了時刻: '+sub;
+  } else if (currentType === 'training') {
+    sub = (document.getElementById('field-sub') || {}).value.trim() || '';
   }
 
   const btn = document.getElementById('modal-submit-btn');
@@ -282,6 +314,62 @@ function submitPost() {
     closeModal();
     showToast('投稿しました');
     loadPosts('');
+  });
+}
+
+let editingPostId = null;
+
+function deletePost(postId) {
+  if (!window.confirm('この投稿を削除しますか？')) return;
+  postNoCors(GAS_URL.board, { action:'deletePost', postId:postId }, function() {
+    allPosts = allPosts.filter(function(p){ return p.id !== postId; });
+    renderFeed(currentFilter);
+    showToast('削除しました');
+  });
+}
+
+function openEditModal(postId) {
+  const p = allPosts.find(function(x){ return x.id === postId; });
+  if (!p) return;
+  editingPostId = postId;
+  const cfg = TYPE_CONFIG[p.type] || TYPE_CONFIG.notice;
+  const hasSubField = cfg.fields.some(function(f){ return f.id === 'sub'; });
+  document.getElementById('edit-content').value = p.content;
+  const subRow = document.getElementById('edit-sub-row');
+  if (hasSubField) {
+    subRow.style.display = '';
+    document.getElementById('edit-sub-label').textContent = cfg.fields.find(function(f){ return f.id==='sub'; }).label || 'サブ情報';
+    document.getElementById('edit-sub').value = p.sub || '';
+  } else {
+    subRow.style.display = 'none';
+  }
+  const btn = document.getElementById('edit-submit-btn');
+  btn.disabled = false; btn.textContent = '保存する';
+  document.getElementById('edit-overlay').classList.add('show');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-overlay').classList.remove('show');
+  editingPostId = null;
+}
+
+function closeEditIfOutside(e) {
+  if (e.target === document.getElementById('edit-overlay')) closeEditModal();
+}
+
+function submitEdit() {
+  if (!editingPostId) return;
+  const content = document.getElementById('edit-content').value.trim();
+  if (!content) { showToast('内容を入力してください'); return; }
+  const sub = document.getElementById('edit-sub').value.trim();
+  const btn = document.getElementById('edit-submit-btn');
+  btn.disabled = true; btn.textContent = '保存中…';
+  postNoCors(GAS_URL.board, { action:'updatePost', postId:editingPostId, content:content, sub:sub }, function() {
+    const p = allPosts.find(function(x){ return x.id === editingPostId; });
+    if (p) { p.content = content; p.sub = sub; }
+    renderFeed(currentFilter);
+    closeEditModal();
+    showToast('編集しました');
   });
 }
 
