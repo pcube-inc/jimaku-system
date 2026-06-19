@@ -776,6 +776,14 @@ function loadAdminConfirmedCal() {
     renderAdminConfCalendar();
   };
   jsonp(GAS_URL.shift, { action:'getConfirmedShift', year:adminConfCalYear, month:adminConfCalMonth }, cbName);
+  if (!allStaff.length) {
+    const cb2 = 'cb_ast2_'+Date.now();
+    window[cb2] = function(r) {
+      cleanup(cb2);
+      allStaff = (r.success && r.data) ? r.data.map(function(s){ return s.reg_name||s.line_name||''; }).filter(Boolean) : [];
+    };
+    jsonp(GAS_URL.shift, { action:'getStaffList' }, cb2);
+  }
 }
 
 function renderAdminConfCalendar() {
@@ -819,14 +827,22 @@ function showAdminConfDetail(date) {
   document.getElementById('admin-conf-detail-title').textContent = fmtDateJP(date)+' の確定シフト';
   const staffEl = document.getElementById('admin-conf-detail-staff');
   const entries = adminConfData[date] || [];
+  const nameOptions = allStaff.length
+    ? allStaff.map(function(n){ return '<option value="'+esc(n)+'">'+esc(n)+'</option>'; }).join('')
+    : '';
   if (entries.length) {
     staffEl.innerHTML = entries.map(function(e, idx) {
-      return '<div class="staff-confirmed-row" id="conf-row-'+idx+'" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">'+
-        '<span class="chip chip-green" style="flex:1;">'+esc(e.name)+'</span>'+
+      const nameSelect = nameOptions
+        ? '<select class="form-control" style="flex:1;min-width:80px;font-size:12px;padding:4px 6px;" id="conf-name-'+idx+'">'+
+            allStaff.map(function(n){ return '<option value="'+esc(n)+'"'+(e.name===n?' selected':'')+'>'+esc(n)+'</option>'; }).join('')+
+          '</select>'
+        : '<input class="form-control" style="flex:1;font-size:12px;padding:4px 6px;" id="conf-name-'+idx+'" value="'+esc(e.name)+'" />';
+      return '<div class="staff-confirmed-row" id="conf-row-'+idx+'" style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);">'+
+        nameSelect+
         '<select class="form-control" style="width:auto;min-width:80px;font-size:12px;padding:4px 6px;" id="conf-type-'+idx+'">'+
           ['---','リスピーク','もじぱ','研修'].map(function(t){ return '<option'+(e.type===t?' selected':'')+'>'+t+'</option>'; }).join('')+
         '</select>'+
-        '<button class="btn" style="background:var(--green-400);color:#fff;font-size:11px;padding:4px 8px;width:auto;" onclick="saveConfirmedEntry(\''+esc(date)+'\',\''+esc(e.name)+'\','+idx+')">保存</button>'+
+        '<button class="btn" style="background:var(--green-400);color:#fff;font-size:11px;padding:4px 8px;width:auto;white-space:nowrap;" onclick="saveConfirmedEntry(\''+esc(date)+'\',\''+esc(e.name)+'\','+idx+')">保存</button>'+
         '<button class="btn" style="background:#ef5350;color:#fff;font-size:11px;padding:4px 8px;width:auto;" onclick="deleteConfirmedEntry(\''+esc(date)+'\',\''+esc(e.name)+'\','+idx+')">削除</button>'+
         '</div>';
     }).join('');
@@ -851,12 +867,16 @@ function sendLineShiftMessage() {
 }
 
 function saveConfirmedEntry(date, name, idx) {
+  const nameEl = document.getElementById('conf-name-'+idx);
+  const newName = nameEl ? nameEl.value.trim() : name;
   const newType = document.getElementById('conf-type-'+idx).value;
-  postNoCors(GAS_URL.shift, { action:'updateConfirmedEntryType', date:date, name:name, newType:newType }, function() {
+  if (!newName) { showToast('スタッフ名を入力してください'); return; }
+  postNoCors(GAS_URL.shift, { action:'updateConfirmedEntryType', date:date, name:name, newName:newName, newType:newType }, function() {
     if (adminConfData[date]) {
       const entry = adminConfData[date].find(function(e){ return e.name===name; });
-      if (entry) entry.type = newType;
+      if (entry) { entry.name = newName; entry.type = newType; }
     }
+    showAdminConfDetail(date);
     showToast('更新しました');
   });
 }

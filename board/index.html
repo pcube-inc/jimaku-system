@@ -241,10 +241,12 @@ function reactPost(postId, btn) {
 }
 
 function openModal() {
-  const now = new Date();
+  renderFormFields();
   document.getElementById('modal-overlay').classList.add('show');
   const timeField = document.getElementById('field-time');
-  if (timeField) timeField.value = pad(now.getHours())+':'+pad(now.getMinutes());
+  if (timeField) { const now = new Date(); timeField.value = pad(now.getHours())+':'+pad(now.getMinutes()); }
+  const btn = document.getElementById('modal-submit-btn');
+  btn.disabled = false; btn.textContent = '投稿する';
 }
 
 function closeModal() {
@@ -321,17 +323,17 @@ let editingPostId = null;
 
 function deletePost(postId) {
   if (!window.confirm('この投稿を削除しますか？')) return;
-  postNoCors(GAS_URL.board, { action:'deletePost', postId:postId }, function() {
-    allPosts = allPosts.filter(function(p){ return p.id !== postId; });
+  postNoCors(GAS_URL.board, { action:'deletePost', postId:String(postId) }, function() {
+    allPosts = allPosts.filter(function(p){ return String(p.id) !== String(postId); });
     renderFeed(currentFilter);
     showToast('削除しました');
   });
 }
 
 function openEditModal(postId) {
-  const p = allPosts.find(function(x){ return x.id === postId; });
+  const p = allPosts.find(function(x){ return String(x.id) === String(postId); });
   if (!p) return;
-  editingPostId = postId;
+  editingPostId = String(p.id);
   const cfg = TYPE_CONFIG[p.type] || TYPE_CONFIG.notice;
   const hasSubField = cfg.fields.some(function(f){ return f.id === 'sub'; });
   document.getElementById('edit-content').value = p.content;
@@ -365,7 +367,7 @@ function submitEdit() {
   const btn = document.getElementById('edit-submit-btn');
   btn.disabled = true; btn.textContent = '保存中…';
   postNoCors(GAS_URL.board, { action:'updatePost', postId:editingPostId, content:content, sub:sub }, function() {
-    const p = allPosts.find(function(x){ return x.id === editingPostId; });
+    const p = allPosts.find(function(x){ return String(x.id) === String(editingPostId); });
     if (p) { p.content = content; p.sub = sub; }
     renderFeed(currentFilter);
     closeEditModal();

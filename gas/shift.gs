@@ -294,11 +294,13 @@ function deleteConfirmedEntry(params) {
 function updateConfirmedEntryType(params) {
   const date    = params.date;
   const name    = params.name;
+  const newName = params.newName || name;
   const newType = params.newType;
   const sheet = getSheet('シフト確定');
   const rows  = sheet.getDataRange().getValues();
   for (let i = rows.length - 1; i >= 1; i--) {
     if (dateStr(rows[i][0]) === date && rows[i][1] === name) {
+      if (newName !== name) sheet.getRange(i + 1, 2).setValue(newName);
       sheet.getRange(i + 1, 3).setValue(newType);
       return { success: true };
     }
