@@ -849,9 +849,37 @@ function showAdminConfDetail(date) {
   } else {
     staffEl.innerHTML = '<p class="text-sm text-hint">担当なし</p>';
   }
+  // 追加フォーム
+  const addNameOpts = nameOptions
+    ? '<select class="form-control" style="flex:1;min-width:80px;font-size:12px;padding:4px 6px;" id="conf-add-name"><option value="">選択してください</option>'+
+        allStaff.map(function(n){ return '<option value="'+esc(n)+'">'+esc(n)+'</option>'; }).join('')+
+      '</select>'
+    : '<input class="form-control" style="flex:1;font-size:12px;padding:4px 6px;" id="conf-add-name" placeholder="スタッフ名" />';
+  staffEl.innerHTML += '<div style="display:flex;align-items:center;gap:6px;padding:8px 0;margin-top:4px;border-top:2px dashed var(--border-md);">'+
+    addNameOpts+
+    '<select class="form-control" style="width:auto;min-width:80px;font-size:12px;padding:4px 6px;" id="conf-add-type">'+
+      ['---','リスピーク','もじぱ','研修'].map(function(t){ return '<option>'+t+'</option>'; }).join('')+
+    '</select>'+
+    '<button class="btn" style="background:var(--green-50);border:1px solid var(--green-400);color:var(--green-600);font-size:11px;padding:4px 8px;width:auto;white-space:nowrap;" onclick="addConfirmedEntry(\''+esc(date)+'\')">＋追加</button>'+
+  '</div>';
   const det = document.getElementById('admin-conf-detail');
   det.classList.remove('hidden');
   det.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function addConfirmedEntry(date) {
+  const nameEl = document.getElementById('conf-add-name');
+  const typeEl = document.getElementById('conf-add-type');
+  const newName = nameEl ? nameEl.value.trim() : '';
+  const newType = typeEl ? typeEl.value : '---';
+  if (!newName) { showToast('スタッフ名を選択してください'); return; }
+  postNoCors(GAS_URL.shift, { action:'confirmShift', entries:JSON.stringify([{date:date, name:newName, type:newType}]) }, function() {
+    if (!adminConfData[date]) adminConfData[date] = [];
+    adminConfData[date].push({ name:newName, type:newType, confirmed:true });
+    showAdminConfDetail(date);
+    renderAdminConfCalendar();
+    showToast(newName+' を追加しました');
+  });
 }
 
 // LINE送信

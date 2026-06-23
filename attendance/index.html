@@ -51,9 +51,13 @@
 
     <div class="form-group" id="staff-select-wrap">
       <label class="form-label">スタッフ名</label>
-      <select id="staff-name" class="form-control">
+      <select id="staff-name" class="form-control" onchange="onNameChange()">
         <option value="">名前を選択してください</option>
       </select>
+    </div>
+
+    <div id="shift-check-msg" style="display:none;background:var(--amber-50);border:1px solid rgba(239,159,39,.3);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--amber-600);margin-bottom:12px;">
+      ⚠️ 本日のシフトに入っていないため、出退勤の記録はできません。
     </div>
 
     <div id="error-msg" class="error-msg"></div>
@@ -115,6 +119,7 @@ LiffHelper.init(LIFF_ID.attendance, GAS_URL.attendance, function(name, isLiff) {
     document.getElementById('liff-badge-name').textContent = name;
     document.getElementById('liff-badge').classList.add('show');
     document.getElementById('staff-select-wrap').classList.add('hidden');
+    checkTodayShift(name);
   } else {
     loadStaffNames();
   }
@@ -223,6 +228,40 @@ function submitTroubleReport() {
     document.getElementById('trouble-form-panel').style.border = '1.5px solid var(--green-400)';
     showToast('トラブル報告を送信しました');
   });
+}
+
+function onNameChange() {
+  const name = document.getElementById('staff-name').value;
+  if (name) checkTodayShift(name);
+  else {
+    document.getElementById('shift-check-msg').style.display = 'none';
+    document.getElementById('btn-in').disabled = false;
+    document.getElementById('btn-out').disabled = false;
+  }
+}
+
+function checkTodayShift(name) {
+  if (!name) return;
+  const now = new Date();
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  const cbName = 'cb_todayshift_' + Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    const data = (res.success && res.data) ? res.data : {};
+    const todayEntries = data[todayStr] || [];
+    const isOnShift = todayEntries.some(function(e) { return e.name === name; });
+    const msg = document.getElementById('shift-check-msg');
+    if (!isOnShift) {
+      msg.style.display = '';
+      document.getElementById('btn-in').disabled = true;
+      document.getElementById('btn-out').disabled = true;
+    } else {
+      msg.style.display = 'none';
+      document.getElementById('btn-in').disabled = false;
+      document.getElementById('btn-out').disabled = false;
+    }
+  };
+  jsonp(GAS_URL.shift, { action:'getConfirmedShift', year:now.getFullYear(), month:now.getMonth()+1 }, cbName);
 }
 
 function pad(n) { return String(n).padStart(2,'0'); }

@@ -533,7 +533,7 @@ function showConfirmedDetail(date) {
   const staffEl = document.getElementById('conf-detail-staff');
   const confirmed = confirmedData[date] || [];
   staffEl.innerHTML = confirmed.map(function(e) {
-    return '<div class="staff-confirmed-row"><span class="chip chip-green">'+esc(e.name)+'</span><span class="text-sm text-hint">（'+esc(e.type||'業務')+'）</span></div>';
+    return '<div class="staff-confirmed-row"><span class="chip chip-green">'+esc(e.name)+'</span><span class="text-sm text-hint">（'+esc(e.type||'---')+'）</span></div>';
   }).join('') || '<p class="text-sm text-hint">担当なし</p>';
   document.getElementById('conf-detail').classList.remove('hidden');
   document.getElementById('conf-detail').scrollIntoView({ behavior:'smooth', block:'nearest' });
@@ -559,7 +559,7 @@ function renderMyConfShifts() {
       const dp = item.date.split('-');
       return '<div class="staff-confirmed-row"><span class="chip chip-green">'+
         parseInt(dp[1],10)+'月'+parseInt(dp[2],10)+'日</span>'+
-        '<span class="text-sm text-hint">（'+esc(item.type||'業務')+'）</span></div>';
+        '<span class="text-sm text-hint">（'+esc(item.type||'---')+'）</span></div>';
     }).join('');
   }
   panel.classList.remove('hidden');
