@@ -533,7 +533,7 @@ function showConfirmedDetail(date) {
   const staffEl = document.getElementById('conf-detail-staff');
   const confirmed = confirmedData[date] || [];
   staffEl.innerHTML = confirmed.map(function(e) {
-    return '<div class="staff-confirmed-row"><span class="chip chip-green">'+esc(e.name)+'</span><span class="text-sm text-hint">（'+esc(e.type||'---')+'）</span></div>';
+    return '<div class="staff-confirmed-row"><span class="chip chip-green">'+esc(e.name)+'</span><span class="text-sm text-hint">（'+esc(normalizeType(e.type))+'）</span></div>';
   }).join('') || '<p class="text-sm text-hint">担当なし</p>';
   document.getElementById('conf-detail').classList.remove('hidden');
   document.getElementById('conf-detail').scrollIntoView({ behavior:'smooth', block:'nearest' });
@@ -566,6 +566,11 @@ function renderMyConfShifts() {
 }
 
 // ===== ユーティリティ =====
+function normalizeType(t) {
+  if (!t || t === '業務A' || t === '業務B') return '---';
+  return t;
+}
+
 function fmtDate(dt) {
   return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
 }

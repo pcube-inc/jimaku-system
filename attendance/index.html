@@ -119,6 +119,7 @@ LiffHelper.init(LIFF_ID.attendance, GAS_URL.attendance, function(name, isLiff) {
     document.getElementById('liff-badge-name').textContent = name;
     document.getElementById('liff-badge').classList.add('show');
     document.getElementById('staff-select-wrap').classList.add('hidden');
+    checkLocalSubmission();
     checkTodayShift(name);
   } else {
     loadStaffNames();
@@ -169,20 +170,23 @@ function submitAttendance(type) {
   else               btnOut.innerHTML = '<span class="att-icon">⏳</span><span>送信中…</span>';
 
   postNoCors(GAS_URL.attendance, { action:'submitAttendance', name:name, type:type }, function() {
-    btnIn.disabled = btnOut.disabled = btnTr.disabled = false;
+    btnTr.disabled = false;
     btnIn.innerHTML  = '<span class="att-icon">🏢</span><span>出勤</span>';
     btnOut.innerHTML = '<span class="att-icon">🏠</span><span>退勤</span>';
-    const now = new Date();
-    const timeStr = pad(now.getHours())+':'+pad(now.getMinutes());
+    btnIn.disabled = false; btnOut.disabled = false;
+    const now2 = new Date();
+    const timeStr = pad(now2.getHours())+':'+pad(now2.getMinutes());
+    localStorage.setItem('att_' + type + '_' + getTodayStr(), timeStr);
     if (type === 'in') {
-      const el = document.getElementById('result-in');
-      el.textContent='🏢 '+timeStr+' に出勤を記録しました'; el.classList.add('show');
+      document.getElementById('result-in').textContent='🏢 '+timeStr+' に出勤を記録しました';
+      document.getElementById('result-in').classList.add('show');
       document.getElementById('result-out').classList.remove('show');
     } else {
-      const el = document.getElementById('result-out');
-      el.textContent='🏠 '+timeStr+' に退勤を記録しました'; el.classList.add('show');
+      document.getElementById('result-out').textContent='🏠 '+timeStr+' に退勤を記録しました';
+      document.getElementById('result-out').classList.add('show');
       document.getElementById('result-in').classList.remove('show');
     }
+    checkLocalSubmission();
     showToast('送信しました');
   });
 }
@@ -230,36 +234,80 @@ function submitTroubleReport() {
   });
 }
 
+function getTodayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function checkLocalSubmission() {
+  const key = getTodayStr();
+  const inTime  = localStorage.getItem('att_in_'  + key);
+  const outTime = localStorage.getItem('att_out_' + key);
+  if (inTime) {
+    const btn = document.getElementById('btn-in');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="att-icon">✅</span><span>出勤済み（本日送信済み）</span>';
+    const el = document.getElementById('result-in');
+    el.textContent = '🏢 ' + inTime + ' に出勤を記録しました'; el.classList.add('show');
+  }
+  if (outTime) {
+    const btn = document.getElementById('btn-out');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="att-icon">✅</span><span>退勤済み（本日送信済み）</span>';
+    const el = document.getElementById('result-out');
+    el.textContent = '🏠 ' + outTime + ' に退勤を記録しました'; el.classList.add('show');
+  }
+}
+
+function updateButtonStates(isOnShift) {
+  const key = getTodayStr();
+  const inDone  = !!localStorage.getItem('att_in_'  + key);
+  const outDone = !!localStorage.getItem('att_out_' + key);
+  const shiftMsg = document.getElementById('shift-check-msg');
+  const btnIn  = document.getElementById('btn-in');
+  const btnOut = document.getElementById('btn-out');
+  if (!isOnShift) {
+    shiftMsg.style.display = '';
+    btnIn.disabled  = true;
+    btnOut.disabled = true;
+    return;
+  }
+  shiftMsg.style.display = 'none';
+  if (!inDone) {
+    btnIn.disabled = false;
+    btnIn.innerHTML = '<span class="att-icon">🏢</span><span>出勤</span>';
+  }
+  if (!outDone) {
+    btnOut.disabled = false;
+    btnOut.innerHTML = '<span class="att-icon">🏠</span><span>退勤</span>';
+  }
+}
+
 function onNameChange() {
   const name = document.getElementById('staff-name').value;
-  if (name) checkTodayShift(name);
-  else {
+  if (name) {
+    checkLocalSubmission();
+    checkTodayShift(name);
+  } else {
     document.getElementById('shift-check-msg').style.display = 'none';
-    document.getElementById('btn-in').disabled = false;
-    document.getElementById('btn-out').disabled = false;
+    const btnIn  = document.getElementById('btn-in');
+    const btnOut = document.getElementById('btn-out');
+    btnIn.disabled  = false; btnIn.innerHTML  = '<span class="att-icon">🏢</span><span>出勤</span>';
+    btnOut.disabled = false; btnOut.innerHTML = '<span class="att-icon">🏠</span><span>退勤</span>';
   }
 }
 
 function checkTodayShift(name) {
   if (!name) return;
   const now = new Date();
-  const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  const todayStr = getTodayStr();
   const cbName = 'cb_todayshift_' + Date.now();
   window[cbName] = function(res) {
     cleanup(cbName);
     const data = (res.success && res.data) ? res.data : {};
     const todayEntries = data[todayStr] || [];
     const isOnShift = todayEntries.some(function(e) { return e.name === name; });
-    const msg = document.getElementById('shift-check-msg');
-    if (!isOnShift) {
-      msg.style.display = '';
-      document.getElementById('btn-in').disabled = true;
-      document.getElementById('btn-out').disabled = true;
-    } else {
-      msg.style.display = 'none';
-      document.getElementById('btn-in').disabled = false;
-      document.getElementById('btn-out').disabled = false;
-    }
+    updateButtonStates(isOnShift);
   };
   jsonp(GAS_URL.shift, { action:'getConfirmedShift', year:now.getFullYear(), month:now.getMonth()+1 }, cbName);
 }

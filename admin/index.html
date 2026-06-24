@@ -840,7 +840,7 @@ function showAdminConfDetail(date) {
       return '<div class="staff-confirmed-row" id="conf-row-'+idx+'" style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);">'+
         nameSelect+
         '<select class="form-control" style="width:auto;min-width:80px;font-size:12px;padding:4px 6px;" id="conf-type-'+idx+'">'+
-          ['---','リスピーク','もじぱ','研修'].map(function(t){ return '<option'+(e.type===t?' selected':'')+'>'+t+'</option>'; }).join('')+
+          ['---','リスピーク','もじぱ','研修'].map(function(t){ return '<option'+(normalizeType(e.type)===t?' selected':'')+'>'+t+'</option>'; }).join('')+
         '</select>'+
         '<button class="btn" style="background:var(--green-400);color:#fff;font-size:11px;padding:4px 8px;width:auto;white-space:nowrap;" onclick="saveConfirmedEntry(\''+esc(date)+'\',\''+esc(e.name)+'\','+idx+')">保存</button>'+
         '<button class="btn" style="background:#ef5350;color:#fff;font-size:11px;padding:4px 8px;width:auto;" onclick="deleteConfirmedEntry(\''+esc(date)+'\',\''+esc(e.name)+'\','+idx+')">削除</button>'+
@@ -1203,6 +1203,10 @@ function postNoCors(url, params, cb) {
 function showToast(msg) {
   const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
   setTimeout(function(){ t.classList.remove('show'); },2500);
+}
+function normalizeType(t) {
+  if (!t || t === '業務A' || t === '業務B') return '---';
+  return t;
 }
 function esc(str) {
   return (str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
