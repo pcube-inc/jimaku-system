@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>スタッフ掲示板 | 字幕システム</title>
+<title>お知らせ | 字幕システム</title>
 <link rel="stylesheet" href="../css/common.css">
 <style>
 /* タブ */
@@ -68,7 +68,7 @@
   <header class="header">
     <div class="header-logo" style="background:#5C6BC0;">📋</div>
     <div class="header-text">
-      <div class="header-title">スタッフ掲示板</div>
+      <div class="header-title">お知らせ</div>
       <div class="header-sub">スタッフ間の連絡・共有スペース</div>
     </div>
     <a class="header-back" href="../">🏠 ホーム</a>
@@ -323,7 +323,7 @@ let editingPostId = null;
 
 function deletePost(postId) {
   if (!window.confirm('この投稿を削除しますか？')) return;
-  postNoCors(GAS_URL.board, { action:'deletePost', postId:String(postId) }, function() {
+  postNoCors(GAS_URL.board, { action:'deletePost', postId:String(postId), requester:lockedName||'' }, function() {
     allPosts = allPosts.filter(function(p){ return String(p.id) !== String(postId); });
     renderFeed(currentFilter);
     showToast('削除しました');
@@ -366,7 +366,7 @@ function submitEdit() {
   const sub = document.getElementById('edit-sub').value.trim();
   const btn = document.getElementById('edit-submit-btn');
   btn.disabled = true; btn.textContent = '保存中…';
-  postNoCors(GAS_URL.board, { action:'updatePost', postId:editingPostId, content:content, sub:sub }, function() {
+  postNoCors(GAS_URL.board, { action:'updatePost', postId:editingPostId, content:content, sub:sub, requester:lockedName||'' }, function() {
     const p = allPosts.find(function(x){ return String(x.id) === String(editingPostId); });
     if (p) { p.content = content; p.sub = sub; }
     renderFeed(currentFilter);

@@ -38,6 +38,10 @@
 .conf-detail-title { font-size:14px; font-weight:700; margin-bottom:10px; color:var(--green-600); }
 .staff-confirmed-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; font-size:13px; }
 
+/* お知らせ管理 */
+.board-mgmt-row { border:1px solid var(--border); border-radius:var(--radius-lg); padding:12px; margin-bottom:10px; }
+.board-mgmt-meta { font-size:12px; color:var(--text-sub); margin-bottom:6px; }
+
 /* シフト設定カレンダー */
 .setting-cal-nav { display:flex; align-items:center; justify-content:space-between; margin:10px 0; }
 .setting-cal-title { font-size:14px; font-weight:700; }
@@ -82,6 +86,7 @@
       <button class="tab-item" onclick="switchTab('shift-mgmt',this)">シフト管理</button>
       <button class="tab-item" onclick="switchTab('staff',this)">スタッフ管理</button>
       <button class="tab-item" onclick="switchTab('templates',this)">定型文</button>
+      <button class="tab-item" onclick="switchTab('board-mgmt',this)">お知らせ管理</button>
     </nav>
 
     <div class="content">
@@ -292,6 +297,12 @@
         <button class="btn btn-primary" onclick="saveTemplates()">定型文を保存</button>
       </div>
 
+      <!-- ===== お知らせ管理 ===== -->
+      <div id="tab-board-mgmt" class="tab-panel">
+        <p class="text-sm text-hint mb-12">スタッフ掲示板（お知らせ）の投稿を、投稿者に関わらず編集・削除できます。最新50件を表示します。</p>
+        <div id="board-mgmt-list"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -323,6 +334,10 @@ let adminConfCalMonth  = today.getMonth() + 1;
 let selectedAdminConfDate = null;
 let adminConfData  = {};
 
+// お知らせ管理用
+let adminPw     = sessionStorage.getItem('admin_pw') || '';
+let boardPosts  = [];
+
 // ---- 認証 ----
 function checkPassword() {
   const pw  = document.getElementById('pw-input').value.trim();
@@ -335,6 +350,8 @@ function checkPassword() {
     btn.disabled = false; btn.textContent = 'ログイン';
     if (res.success && res.data && res.data.ok) {
       sessionStorage.setItem('admin_ok','1');
+      sessionStorage.setItem('admin_pw', pw);
+      adminPw = pw;
       showAdminScreen();
     } else {
       document.getElementById('pw-error').classList.add('show');
@@ -366,6 +383,7 @@ function switchTab(name, btn) {
   if (name==='shift-mgmt') { loadInputCalendar(); loadAdminConfirmedCal(); }
   if (name==='staff') loadStaff();
   if (name==='templates') loadTemplates();
+  if (name==='board-mgmt') loadBoardPosts();
 }
 
 function switchSubTab(name, btn) {
@@ -1207,6 +1225,59 @@ function showToast(msg) {
 function normalizeType(t) {
   if (!t || t === '業務A' || t === '業務B') return '---';
   return t;
+}
+
+// ---- お知らせ管理 ----
+const BOARD_TYPE_LABELS = { notice:'📢 お知らせ', handover:'🔄 申し送り', trouble:'⚠️ トラブル', training:'📚 研修報告' };
+
+function loadBoardPosts() {
+  const listEl = document.getElementById('board-mgmt-list');
+  listEl.innerHTML = '<p class="text-hint text-sm">読み込み中…</p>';
+  const cbName = 'cb_boardposts_'+Date.now();
+  window[cbName] = function(res) {
+    cleanup(cbName);
+    boardPosts = (res.success && res.data) ? res.data : [];
+    renderBoardMgmt();
+  };
+  jsonp(GAS_URL.board, { action:'getPosts' }, cbName);
+}
+
+function renderBoardMgmt() {
+  const listEl = document.getElementById('board-mgmt-list');
+  if (!boardPosts.length) { listEl.innerHTML = '<p class="text-hint text-sm">投稿がありません</p>'; return; }
+  listEl.innerHTML = boardPosts.map(function(p) {
+    const label = BOARD_TYPE_LABELS[p.type] || p.type;
+    return '<div class="board-mgmt-row" id="board-mgmt-'+p.id+'">'+
+      '<div class="board-mgmt-meta">'+label+'　<b>'+esc(p.name)+'</b>　'+esc(p.datetime)+'</div>'+
+      '<textarea class="form-control board-mgmt-content" rows="3">'+esc(p.content)+'</textarea>'+
+      '<input type="text" class="form-control board-mgmt-sub mt-8" value="'+esc(p.sub||'')+'" placeholder="サブ情報（任意）">'+
+      '<div class="row mt-8">'+
+      '<button class="btn" style="width:auto;padding:0 16px;" onclick="saveBoardPost(\''+p.id+'\')">保存</button>'+
+      '<button class="btn" style="width:auto;padding:0 16px;background:var(--red-50);color:var(--red-600);" onclick="deleteBoardPost(\''+p.id+'\')">削除</button>'+
+      '</div>'+
+      '</div>';
+  }).join('');
+}
+
+function saveBoardPost(postId) {
+  const row     = document.getElementById('board-mgmt-'+postId);
+  const content = row.querySelector('.board-mgmt-content').value.trim();
+  const sub     = row.querySelector('.board-mgmt-sub').value.trim();
+  if (!content) { showToast('内容を入力してください'); return; }
+  postNoCors(GAS_URL.board, { action:'updatePost', postId:String(postId), content:content, sub:sub, adminPassword:adminPw }, function() {
+    const p = boardPosts.find(function(x){ return String(x.id) === String(postId); });
+    if (p) { p.content = content; p.sub = sub; }
+    showToast('保存しました');
+  });
+}
+
+function deleteBoardPost(postId) {
+  if (!window.confirm('この投稿を削除しますか？（元に戻せません）')) return;
+  postNoCors(GAS_URL.board, { action:'deletePost', postId:String(postId), adminPassword:adminPw }, function() {
+    boardPosts = boardPosts.filter(function(p){ return String(p.id) !== String(postId); });
+    renderBoardMgmt();
+    showToast('削除しました');
+  });
 }
 function esc(str) {
   return (str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');

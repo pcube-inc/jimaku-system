@@ -134,13 +134,23 @@ function reactPost(params) {
   return { success: false, error: 'post not found' };
 }
 
+// requester（投稿者本人）またはadminPassword（管理者設定のパスワードと一致）のどちらかが必要
+function isAuthorized(requester, owner, adminPassword) {
+  if (requester && owner && requester === owner) return true;
+  if (adminPassword && adminPassword === (getSettingMap()['admin_password'] || '')) return true;
+  return false;
+}
+
 function deletePost(params) {
-  const postId = params.postId || '';
+  const postId    = params.postId        || '';
+  const requester = params.requester     || '';
+  const adminPw   = params.adminPassword || '';
   if (!postId) return { success: false, error: 'postId required' };
   const sheet = getSheet('掲示板');
   const rows  = sheet.getDataRange().getValues();
   for (let i = rows.length - 1; i >= 1; i--) {
     if (String(rows[i][0]) === postId) {
+      if (!isAuthorized(requester, rows[i][1], adminPw)) return { success: false, error: 'forbidden' };
       sheet.deleteRow(i + 1);
       return { success: true };
     }
@@ -149,14 +159,17 @@ function deletePost(params) {
 }
 
 function updatePost(params) {
-  const postId  = params.postId  || '';
-  const content = params.content || '';
-  const sub     = params.sub     || '';
+  const postId    = params.postId        || '';
+  const requester = params.requester     || '';
+  const adminPw   = params.adminPassword || '';
+  const content   = params.content       || '';
+  const sub       = params.sub           || '';
   if (!postId) return { success: false, error: 'postId required' };
   const sheet = getSheet('掲示板');
   const rows  = sheet.getDataRange().getValues();
   for (let i = rows.length - 1; i >= 1; i--) {
     if (String(rows[i][0]) === postId) {
+      if (!isAuthorized(requester, rows[i][1], adminPw)) return { success: false, error: 'forbidden' };
       sheet.getRange(i + 1, 5).setValue(content);
       sheet.getRange(i + 1, 6).setValue(sub);
       return { success: true };
