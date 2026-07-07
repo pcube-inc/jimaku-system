@@ -45,28 +45,47 @@
 - [x] 管理者設定（スタッフ管理・通知設定・定型文）
 - [x] **出退勤ページ改修**（退勤後トラブル選択フロー追加）
 - [x] **掲示板機能 実装**（board/index.html・gas/board.gs）
-- [ ] **jimaku-board GASプロジェクトを新規作成・デプロイ**（未実施）
-- [ ] **LINE LIFF に board を追加**（未実施）
-- [ ] **js/config.js の board URL・LIFF ID を実際の値に書き換え**（プレースホルダーのまま）
-- [ ] **jimaku-attendance を再デプロイ**（getSettings追加を本番反映）
-- [ ] **管理者設定に emergency_phone を入力**（スプレッドシートに手動追加）
-- [ ] **git push → GitHub Pages 反映**
-- [ ] **リッチメニュー差し替え**（旧「トラブル対応」→「掲示板」、画像は依頼者側で用意）
+- [x] **jimaku-board GASプロジェクトを新規作成・デプロイ**
+- [x] **LINE LIFF に board（情報交換）を追加**（LIFF ID: 2010288935-fUznqbFW）
+- [x] **js/config.js の board URL・LIFF ID を実際の値に書き換え**
+- [x] **jimaku-attendance を再デプロイ**（getSettings追加を本番反映）
+- [x] **管理者設定に emergency_phone を入力**
+- [x] **git push → GitHub Pages 反映**（コミット: e24a24b）
+- [x] **リッチメニュー差し替え**（出退勤報告・情報交換の2枠に更新）
+- [x] **出退勤UI刷新**（出勤/退勤/トラブル報告の3ボタン構成。退勤後フロー廃止）
+- [x] **定型文に本文テンプレート追加**（出勤/退勤メールの件名+本文をそれぞれ設定可能）
+- [x] **シフト確定 編集機能**（業務種別変更・スタッフ削除ボタンを管理画面に追加）
+- [x] **掲示板 全投稿種別でLINE通知**（従来はトラブルのみ）
+- [x] **trouble.gs isEnabled 修正**（後方互換版、空欄=有効）
+- [x] **ホーム画面のトラブル対応→掲示板に差し替え、緊急電話番号の自動表示**
+- [x] **掲示板：研修報告フィールド追加・自己削除編集機能・LINE通知バグ修正**
+- [x] **シフト確定：業務種別4択化（---/リスピーク/もじぱ/研修）・スタッフ名も編集可能に**
+- [x] **出退勤：確定シフト外は出勤/退勤ボタンを無効化（当初は出退勤のみ、localStorage管理）**
+- [x] **出退勤：シフト確定表示の旧フォーマット（業務A/B）を「---」に正規化**
+- [x] **出退勤：トラブル報告ボタンもシフト外は無効化・サーバー側で当日送信済み判定（二重打刻防止）**（2026-07-07）
 
 ---
 
 ## 🔧 重要な仕様・決定事項
 
-### 出退勤ページの改修（2026-06-16）
-- 「出退勤」「トラブル対応」のリッチメニューを**「出退勤」1つに統合**
-- 退勤ボタン押下後、3択を表示：
-  1. **なし** → そのまま完了
-  2. **後ほど電話** → `emergency_phone`（管理者設定キー）を表示 + 電話リンク
-  3. **メールで報告** → 発生時刻・場所・状況・対応の構造化フォーム → `trouble.gs` の `submitTrouble2nd` に POST
-- 緊急連絡先は `attendance.gs` の `getSettings` アクション（新規追加）で取得
-- `emergency_phone` キーを管理者設定に追加（`setup.gs` の `setupSheets()` 初期値に追記済み）
+### 出退勤ページの最終仕様（2026-06-17、ボタン制御は2026-07-07に強化）
+- リッチメニュー「出退勤」を押すと **出勤 / 退勤 / トラブル報告** の3ボタンを表示
+- 退勤は確認ダイアログ後にそのまま記録（トラブル選択フローは廃止）
+- トラブル報告ボタンを押すと **発生時刻・状況・対応** フォームを表示（発生場所フィールドは廃止）
+- フォーム送信先は `trouble.gs` の `submitTrouble2nd` アクション
+- **シフト対象外の日**：出勤/退勤/トラブル報告の3ボタンすべてを無効化（`attendance/index.html` の `updateButtonStates`）。判定は `shift.gs` の `getConfirmedShift` を毎回サーバー照会
+- **当日送信済みの二重打刻防止**：`attendance.gs` に `getTodayAttendance`（GET専用、`出退勤記録` シートを当日分スキャン）を追加し、ページ読込時にサーバーへ正本確認。同一名で本日分の出勤/退勤が既にあればボタンを無効化し「✅ 本日は送信済みです」と表示。localStorageは同一端末での即時表示用の補助に留め、サーバー側判定を優先（別端末・別ブラウザでの二重打刻も防止）
 
-### 掲示板機能（2026-06-16 実装、デプロイ未実施）
+### 定型文 件名+本文（2026-06-17）
+- 出勤・退勤メールに `template_attendance_in_body` / `template_attendance_out_body` キーを追加
+- 管理者設定画面の「定型文」タブで件名・本文をそれぞれ入力可能
+- 空欄の場合はデフォルト本文を使用
+
+### シフト確定 編集機能（2026-06-17）
+- 管理者画面「シフト確定」タブで日付をクリックすると、スタッフごとに業務種別セレクト＋保存ボタン・削除ボタンが表示
+- GAS新アクション: `updateConfirmedEntryType`（shift.gs）、`deleteConfirmedEntry`（shift.gs）
+
+### 掲示板機能（2026-06-16 実装、デプロイ済み）
 - **場所**：`board/index.html`（新規）、`gas/board.gs`（新規）
 - **LIFFページ**：旧「トラブル対応」の枠に配置
 - **投稿4種**：📢 お知らせ / 🔄 申し送り / ⚠️ トラブル報告 / ✅ 業務完了
@@ -78,49 +97,41 @@
 ### GASプロジェクト一覧（6プロジェクト）
 | キー | プロジェクト名 | 状態 |
 |------|-------------|------|
-| shift | jimaku-shift | 稼働中 |
-| wakeup | jimaku-wakeup | 稼働中 |
-| attendance | jimaku-attendance | 要再デプロイ（getSettings追加） |
-| trouble | jimaku-trouble | 稼働中 |
-| admin | jimaku-setup | 稼働中 |
-| board | jimaku-board | **未作成（新規作成が必要）** |
+| shift | jimaku-shift | 稼働中（@24） |
+| wakeup | jimaku-wakeup | 稼働中（@11） |
+| attendance | jimaku-attendance | 稼働中（@9） |
+| trouble | jimaku-trouble | 稼働中（@6） |
+| admin | jimaku-setup | 稼働中（@10） |
+| board | jimaku-board | 稼働中（@2） |
 
 ### clasp の .claspignore 注意
-- 既存の5プロジェクトに `board.gs` が混入しないよう、`.claspignore` に `board.gs` を追加すること
+- 既存の5プロジェクトに `board.gs` が混入しないよう、`.claspignore` に `board.gs` を追加すること（attendance含め全プロジェクト共通）
 - 各プロジェクトのデプロイコマンドは `SYSTEM_OVERVIEW.md` セクション8を参照
+- デプロイ後は必ず `.clasp.json`/`.claspignore` を `jimaku-shift`（デフォルト）に戻すこと
 
 ---
 
 ## 📝 直前の作業内容
 
-- **最終作業日**：2026-06-16
-- **作業PC**：D:\Users\admin\Storage\Google Drive (okuda)\AI\Claude\projects\Jimaku System
+- **最終作業日**：2026-07-07
+- **作業PC**：別PC（引き継ぎ作業）
 - **やったこと**：
-  - 出退勤ページ改修（退勤後トラブル有無選択UI、電話カード、メール報告フォーム）
-  - 掲示板ページ新規作成（board/index.html）
-  - 掲示板GAS新規作成（gas/board.gs）
-  - gas/attendance.gs に getSettings アクション追加（緊急連絡先取得用）
-  - gas/setup.gs に emergency_phone の初期値追加
-  - js/config.js に board のプレースホルダー追加
-- **止まった箇所**：デプロイ手順の説明まで完了。実際のデプロイは未実施。
-- **次にやること**：
-  1. GASエディタで jimaku-board プロジェクト作成・board.gs 貼り付け・デプロイ
-  2. setupBoardSheet() 手動実行
-  3. LINE Developers で board 用 LIFF 追加
-  4. js/config.js のプレースホルダーを実際のURL・LIFF IDに書き換え
-  5. clasp で jimaku-attendance を再デプロイ
-  6. git push
-  7. 管理者設定で emergency_phone 入力
-  8. リッチメニュー画像差し替え・URL変更
+  - 前回PC（6/18〜6/24）で未pushだった2コミット（8b4a5be・f40bc8f）のpushを試みたが、後述の理由で失敗（未解決）
+  - 出退勤ページに機能追加2件：
+    1. シフト対象外の日は「出勤」「退勤」「トラブル報告」の3ボタンすべてを無効化（従来はトラブル報告のみ無効化されていなかった）
+    2. 当日の出勤/退勤が既に送信済みの場合、サーバー側（`getTodayAttendance`）で正本判定し「✅ 本日は送信済みです」表示でボタン無効化（従来はlocalStorageのみで別端末では二重打刻可能だった）
+  - `gas/attendance.gs` に `getTodayAttendance` アクション追加、jimaku-attendance を再デプロイ（@9）
+  - 静的プレビューサーバーでUI動作確認済み（本番GASの読み取り専用エンドポイントに対して実地テスト、送信系ボタンはクリックせず未然に確認）
+- **止まった箇所**：CLAUDE.md・コード変更のコミットまで完了。git pushは`git remote -v`のトークンがpush（書き込み）権限を持たないため401で失敗する状態（下記メモ参照）
+- **次にやること**：GitHub PATを書き込み権限ありで再発行し、`git remote set-url origin`を更新した上で `git push` を実行
 
 ---
 
 ## ⚠️ 既知の問題・メモ
 
-- `js/config.js` の `board:` はプレースホルダー（`【jimaku-board のデプロイURL】`）のまま。デプロイ後に実際のURLに書き換えること。
-- `board/index.html` で `LIFF_ID.board` を参照しているため、上記プレースホルダーのままだとLIFF初期化が失敗する（LINE外では動作する）。
-- `emergency_phone` がスプレッドシートの管理者設定シートに存在しない場合、電話カードには「未設定」と表示される（エラーにはならない）。
 - 既存の `trouble/index.html` はリッチメニューから外れるが、ページ自体は残す（URLを直接知っている場合にアクセス可能）。
+- シフト確定の業務種別は現在「---/リスピーク/もじぱ/研修」の4択（旧「業務A/B」表記は「---」に正規化済み）。変更が必要な場合は admin/index.html の `saveConfirmedEntry` 内セレクトオプションを修正。
+- **【要対応】git push が失敗する**：リポジトリの `origin` リモートURLにGitHubのPAT（Personal Access Token）が埋め込まれているが、そのトークンは読み取り（fetch/ls-remote）はできるものの書き込み（push）権限がなく、`git push` 実行時に `git-receive-pack` への認証が401で拒否される。その後 git-credential-manager が対話的認証にフォールバックしようとしてハングする（非対話シェルでは無応答のまま止まる）。**対応方法**：GitHubで書き込み権限（`repo` スコープ、またはfine-grainedなら Contents: Read and write）を持つ新しいPATを発行し、`git remote set-url origin https://<新トークン>@github.com/pcube-inc/jimaku-system.git` を実行してから push する。なお、トークンをURLに平文で埋め込む現行方式はセキュリティ上望ましくないため、余裕があれば `git credential-manager` 経由のログインに切り替えることを推奨。
 
 ---
 
@@ -128,4 +139,7 @@
 
 | 日付 | 作業内容 | 担当PC |
 |------|---------|--------|
-| 2026-06-16 | 出退勤ページ改修・掲示板機能実装（コード完成、デプロイ未実施） | okuda PC |
+| 2026-06-16 | 出退勤統合・掲示板（情報交換）機能実装・全デプロイ完了 | okuda PC |
+| 2026-06-17 | 6件改修（出退勤UI・定型文本文・シフト編集・掲示板LINE通知・バグ修正）デプロイ完了 | okuda PC |
+| 2026-06-18〜06-24 | 8件改修（ホーム画面差替・掲示板研修報告/編集削除・シフト種別4択化・出退勤シフト外無効化・業務A正規化等）4コミット。**git pushは未実施のまま放置**（今回判明） | okuda PC |
+| 2026-07-07 | 未push2コミットのpush試行（トークン権限不足で失敗・要対応）／出退勤：トラブル報告もシフト外無効化・サーバー側二重打刻防止を追加しattendance@9デプロイ | 別PC |

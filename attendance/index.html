@@ -120,7 +120,7 @@ LiffHelper.init(LIFF_ID.attendance, GAS_URL.attendance, function(name, isLiff) {
     document.getElementById('liff-badge').classList.add('show');
     document.getElementById('staff-select-wrap').classList.add('hidden');
     checkLocalSubmission();
-    checkTodayShift(name);
+    refreshState(name);
   } else {
     loadStaffNames();
   }
@@ -246,38 +246,81 @@ function checkLocalSubmission() {
   if (inTime) {
     const btn = document.getElementById('btn-in');
     btn.disabled = true;
-    btn.innerHTML = '<span class="att-icon">✅</span><span>出勤済み（本日送信済み）</span>';
+    btn.innerHTML = '<span class="att-icon">✅</span><span>本日は送信済みです</span>';
     const el = document.getElementById('result-in');
     el.textContent = '🏢 ' + inTime + ' に出勤を記録しました'; el.classList.add('show');
   }
   if (outTime) {
     const btn = document.getElementById('btn-out');
     btn.disabled = true;
-    btn.innerHTML = '<span class="att-icon">✅</span><span>退勤済み（本日送信済み）</span>';
+    btn.innerHTML = '<span class="att-icon">✅</span><span>本日は送信済みです</span>';
     const el = document.getElementById('result-out');
     el.textContent = '🏠 ' + outTime + ' に退勤を記録しました'; el.classList.add('show');
   }
 }
 
-function updateButtonStates(isOnShift) {
-  const key = getTodayStr();
-  const inDone  = !!localStorage.getItem('att_in_'  + key);
-  const outDone = !!localStorage.getItem('att_out_' + key);
+// サーバー側のシフト・出退勤記録を取得し、ボタンの有効/無効を確定させる（localStorageは同一端末のみの暫定表示、こちらが正本）
+function refreshState(name) {
+  if (!name) return;
+  const now = new Date();
+  const todayStr = getTodayStr();
+  let isOnShift = null;
+  let attStatus = null;
+  function tryFinalize() {
+    if (isOnShift === null || attStatus === null) return;
+    updateButtonStates(isOnShift, attStatus);
+  }
+
+  const cbShift = 'cb_todayshift_' + Date.now();
+  window[cbShift] = function(res) {
+    cleanup(cbShift);
+    const data = (res.success && res.data) ? res.data : {};
+    const todayEntries = data[todayStr] || [];
+    isOnShift = todayEntries.some(function(e) { return e.name === name; });
+    tryFinalize();
+  };
+  jsonp(GAS_URL.shift, { action:'getConfirmedShift', year:now.getFullYear(), month:now.getMonth()+1 }, cbShift);
+
+  const cbAtt = 'cb_todayatt_' + Date.now();
+  window[cbAtt] = function(res) {
+    cleanup(cbAtt);
+    attStatus = (res.success && res.data) ? res.data : { in:false, out:false };
+    tryFinalize();
+  };
+  jsonp(GAS_URL.attendance, { action:'getTodayAttendance', name:name }, cbAtt);
+}
+
+function updateButtonStates(isOnShift, attStatus) {
   const shiftMsg = document.getElementById('shift-check-msg');
   const btnIn  = document.getElementById('btn-in');
   const btnOut = document.getElementById('btn-out');
+  const btnTr  = document.getElementById('btn-trouble');
+
   if (!isOnShift) {
     shiftMsg.style.display = '';
     btnIn.disabled  = true;
     btnOut.disabled = true;
+    btnTr.disabled  = true;
     return;
   }
   shiftMsg.style.display = 'none';
-  if (!inDone) {
+  btnTr.disabled = false;
+
+  const key = getTodayStr();
+  const inDone  = (attStatus && attStatus.in)  || !!localStorage.getItem('att_in_'  + key);
+  const outDone = (attStatus && attStatus.out) || !!localStorage.getItem('att_out_' + key);
+
+  if (inDone) {
+    btnIn.disabled = true;
+    btnIn.innerHTML = '<span class="att-icon">✅</span><span>本日は送信済みです</span>';
+  } else {
     btnIn.disabled = false;
     btnIn.innerHTML = '<span class="att-icon">🏢</span><span>出勤</span>';
   }
-  if (!outDone) {
+  if (outDone) {
+    btnOut.disabled = true;
+    btnOut.innerHTML = '<span class="att-icon">✅</span><span>本日は送信済みです</span>';
+  } else {
     btnOut.disabled = false;
     btnOut.innerHTML = '<span class="att-icon">🏠</span><span>退勤</span>';
   }
@@ -287,29 +330,16 @@ function onNameChange() {
   const name = document.getElementById('staff-name').value;
   if (name) {
     checkLocalSubmission();
-    checkTodayShift(name);
+    refreshState(name);
   } else {
     document.getElementById('shift-check-msg').style.display = 'none';
     const btnIn  = document.getElementById('btn-in');
     const btnOut = document.getElementById('btn-out');
+    const btnTr  = document.getElementById('btn-trouble');
     btnIn.disabled  = false; btnIn.innerHTML  = '<span class="att-icon">🏢</span><span>出勤</span>';
     btnOut.disabled = false; btnOut.innerHTML = '<span class="att-icon">🏠</span><span>退勤</span>';
+    btnTr.disabled  = false;
   }
-}
-
-function checkTodayShift(name) {
-  if (!name) return;
-  const now = new Date();
-  const todayStr = getTodayStr();
-  const cbName = 'cb_todayshift_' + Date.now();
-  window[cbName] = function(res) {
-    cleanup(cbName);
-    const data = (res.success && res.data) ? res.data : {};
-    const todayEntries = data[todayStr] || [];
-    const isOnShift = todayEntries.some(function(e) { return e.name === name; });
-    updateButtonStates(isOnShift);
-  };
-  jsonp(GAS_URL.shift, { action:'getConfirmedShift', year:now.getFullYear(), month:now.getMonth()+1 }, cbName);
 }
 
 function pad(n) { return String(n).padStart(2,'0'); }

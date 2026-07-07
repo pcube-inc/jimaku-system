@@ -9,6 +9,7 @@ function doGet(e) {
     if      (action === 'getStaff')         result = getStaff();
     else if (action === 'getStaffByLineId') result = getStaffByLineId(e.parameter);
     else if (action === 'getSettings')      result = getSettingsPublic();
+    else if (action === 'getTodayAttendance') result = getTodayAttendance(e.parameter);
     else result = { success: false, error: 'unknown action' };
   } catch(err) { result = { success: false, error: err.message }; }
   const json = JSON.stringify(result);
@@ -84,6 +85,28 @@ function getStaffByLineId(params) {
     if (rows[i][0] === lineUserId) return { success: true, data: { found: true, name: staffName(rows[i]), enabled: isEnabled(rows[i]) } };
   }
   return { success: true, data: { found: false } };
+}
+
+/** 当日すでに出勤/退勤を記録済みか（サーバー側の正本チェック。二重打刻防止用） */
+function getTodayAttendance(params) {
+  const name = params.name;
+  if (!name) return { success: false, error: 'name required' };
+  const ss     = openSS();
+  const tz     = ss.getSpreadsheetTimeZone();
+  const todayStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  const sheet  = getSheet('出退勤記録');
+  const rows   = sheet.getDataRange().getValues();
+  let inTime = '', outTime = '';
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] !== name) continue;
+    if (!inTime && rows[i][1] instanceof Date && Utilities.formatDate(rows[i][1], tz, 'yyyy-MM-dd') === todayStr) {
+      inTime = Utilities.formatDate(rows[i][1], tz, 'HH:mm');
+    }
+    if (!outTime && rows[i][2] instanceof Date && Utilities.formatDate(rows[i][2], tz, 'yyyy-MM-dd') === todayStr) {
+      outTime = Utilities.formatDate(rows[i][2], tz, 'HH:mm');
+    }
+  }
+  return { success: true, data: { in: !!inTime, out: !!outTime, inTime: inTime, outTime: outTime } };
 }
 
 /** MailApp.sendEmail() の送信上限は無料Gmailで1日100通 */
