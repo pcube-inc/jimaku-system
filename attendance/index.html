@@ -83,7 +83,7 @@
       <!-- 緊急連絡先 -->
       <div style="background:#fff;border:2px solid var(--red-600);border-radius:var(--radius);padding:14px 12px;margin-bottom:14px;text-align:center;">
         <div style="font-size:12px;font-weight:600;color:var(--red-600);margin-bottom:8px;">緊急トラブルの場合は、下記の電話番号に連絡してください</div>
-        <a id="emergency-phone-link" href="#" style="font-size:28px;font-weight:800;color:var(--red-600);letter-spacing:.04em;text-decoration:none;display:block;margin-bottom:10px;">読み込み中…</a>
+        <div id="emergency-phone-links" style="margin-bottom:10px;">読み込み中…</div>
         <div style="font-size:11px;color:var(--text-sub);line-height:1.7;text-align:left;">
           📞 電話が終わったら、トラブル内容を下記のフォームに記載して報告してください<br>
           📝 緊急でない場合は、直接フォームで報告してください
@@ -131,10 +131,16 @@ function loadSettings() {
   const cbName = 'cb_settings_'+Date.now();
   window[cbName] = function(res) {
     cleanup(cbName);
-    const phone = (res.success && res.data && res.data.emergency_phone) ? res.data.emergency_phone : '（未設定）';
-    const link = document.getElementById('emergency-phone-link');
-    link.textContent = phone;
-    link.href = phone !== '（未設定）' ? 'tel:'+phone.replace(/[^0-9+]/g,'') : '#';
+    const phone = (res.success && res.data && res.data.emergency_phone) ? res.data.emergency_phone : '';
+    const wrap  = document.getElementById('emergency-phone-links');
+    const numbers = phone.split(/\r?\n/).map(function(s){ return s.trim(); }).filter(Boolean);
+    if (!numbers.length) {
+      wrap.innerHTML = '<div style="font-size:16px;font-weight:700;color:var(--red-600);">（未設定）</div>';
+    } else {
+      wrap.innerHTML = numbers.map(function(n){
+        return '<a href="tel:'+n.replace(/[^0-9+]/g,'')+'" style="font-size:18px;font-weight:800;color:var(--red-600);letter-spacing:.02em;text-decoration:none;display:block;line-height:1.6;word-break:break-all;">'+n+'</a>';
+      }).join('');
+    }
   };
   jsonp(GAS_URL.attendance, { action:'getSettings' }, cbName);
 }
