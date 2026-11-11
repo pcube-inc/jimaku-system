@@ -14,7 +14,7 @@
 const LiffHelper = (function() {
 
   // LIFF SDKのバージョン（公式推奨）
-  const LIFF_SDK_URL = 'https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js';
+  const LIFF_SDK_URL = 'https://static.line-scdn.net/liff/edge/versions/2.31.1/sdk.js';
 
   function init(liffId, gasUrl, onReady) {
     const isPlaceholder = !liffId || liffId.indexOf('【') >= 0;
